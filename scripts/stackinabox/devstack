@@ -1,0 +1,51 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          DevStack
+# Required-Start:    $local_fs $network $named $time $syslog
+# Required-Stop:     $local_fs $network $named $time $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Description:       "Starts and stops the DevStack instance."
+### END INIT INFO
+
+start() {
+
+  # allow OpenStack nodes to route packets out to NATed network on HOST
+  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+  # attach stack-volumes
+  losetup /dev/loop0 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file
+
+  echo 'Starting DevStack' >&2
+  su -c "screen -dm -c /opt/stack/devstack/stack-screenrc" -s /bin/sh vagrant
+  echo 'DevStack started' >&2
+}
+
+stop() {
+  # if screenrc exists, run screen
+  if [ ! -e /opt/stack/devstack/stack-screenrc ]; then
+    if ! screen -ls | egrep -q "[0-9].stack"; then
+      echo 'DevStack not running' >&2
+      return 1
+    fi
+  fi
+  echo 'Stopping DevStack…' >&2
+  # Don't run unstack.sh as it screws up the br-ex configuration
+  #su -c "/opt/devstack/unstack.sh" - stack
+  echo 'DevStack stopped' >&2
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  retart)
+    stop
+    start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|restart}"
+esac
