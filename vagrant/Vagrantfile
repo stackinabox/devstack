@@ -48,15 +48,13 @@ if ARGV[0] == "up"
   # only perform network reconfiguration on 'vagrant up' command when using virtualbox provider
   provider = "virtualbox" # default
 
+  args = Hash[ ARGV.flat_map{|s| s.scan(/--?([^=\s]+)(?:=(\S+))?/) } ]
+
   # did the user pass in a "--provider" flag?
   passed_provider = false
-  ARGV.each do|a|
-      if a == "--provider"
-        passed_provider = true
-      elsif passed_provider
-        provider = a
-        break
-      end
+  if args.key?('provider')
+    passed_provider = true
+    provider = args['provider']
   end
 
   # does the user have the VAGRANT_DEFAULT_PROVIDER environment variable set
@@ -68,7 +66,7 @@ if ARGV[0] == "up"
     end
   end
 
-  puts("provider=#{provider}")
+  #puts("provider=#{provider}")
 
   # only perform network reconfiguration if using the 'virtualbox' provider
   if provider == "virtualbox"
@@ -172,7 +170,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
          type: :nfs,
          mount_options: ['rw', 'vers=3', 'tcp', 'nolock']
        }
-     }
+     end
 
   else
      print "vagrant-cachier plugin has not been found."
@@ -180,7 +178,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   config.vm.define "stackinabox" do |stackinabox|
-
+    
     config.vm.synced_folder "..", "/vagrant", :nfs => $use_nfs
     config.ssh.forward_agent = true
     config.ssh.insert_key = false
@@ -212,24 +210,33 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--ioapic", "on"] # turn on I/O APIC
       vb.customize ["modifyvm", :id, "--cpus", "#{$cpus}"] # set number of vcpus
       vb.customize ["modifyvm", :id, "--memory", "#{$memory}"] # set amount of memory allocated vm memory
-      vb.customize ["modifyvm", :id, "--hwvirtex", "on"] # turn on host hardware virtualization extensions (VT-x|AMD-V)
       vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"] # set guest OS type
       vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"] # enables DNS resolution from guest using host's DNS
+      vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"] # turn on promiscuous mode on nic 2
       vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"] # turn on promiscuous mode on nic 3
       vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
       vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
       vb.customize ["modifyvm", :id, "--nictype3", "virtio"]
+      vb.customize ["modifyvm", :id, "--pae", "on"] # enables PAE
       vb.customize ["modifyvm", :id, "--longmode", "on"] # enables long mode (64 bit mode in GUEST OS)
       vb.customize ["modifyvm", :id, "--hpet", "on"] # enables a High Precision Event Timer (HPET)
+      vb.customize ["modifyvm", :id, "--hwvirtex", "on"] # turn on host hardware virtualization extensions (VT-x|AMD-V)
+      vb.customize ["modifyvm", :id, "--paravirtprovider", "kvm"] # specifies which paravirtualization interface to provide to the guest operating system
       vb.customize ["modifyvm", :id, "--nestedpaging", "on"] # if --hwvirtex is on, this enables nested paging
       vb.customize ["modifyvm", :id, "--largepages", "on"] # if --hwvirtex & --nestedpaging are on
       vb.customize ["modifyvm", :id, "--vtxvpid", "on"] # if --hwvirtex on
       vb.customize ["modifyvm", :id, "--vtxux", "on"] # if --vtux on (Intel VT-x only) enables unrestricted guest mode
       vb.customize ["modifyvm", :id, "--boot1", "disk"] # tells vm to boot from disk only
+      vb.customize ["modifyvm", :id, "--rtcuseutc", "on"] # lets the real-time clock (RTC) operate in UTC time   
       vb.customize ["modifyvm", :id, "--audio", "none"]
       vb.customize ["modifyvm", :id, "--clipboard", "disabled"]
       vb.customize ["modifyvm", :id, "--usbehci", "off"]
       vb.customize ["modifyvm", :id, "--vrde", "off"]
+
+      unless File.exist?($disk)
+        vb.customize ['createhd', '--filename', $disk, '--size', 500 * 1024]
+      end
+      vb.customize ['storageattach', :id, '--storagectl', 'SATAController', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', $disk]
 
     end
 
@@ -289,6 +296,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vw.vmx["mainMem.allow8GB"] = "TRUE"
     end
 
+    unless provider == "virtualbox"
+      stackinabox.vm.provision "shell", privileged: true, keep_color: false, path: "../scripts/stackinabox/data_disk_setup.sh"
+    end
     stackinabox.vm.provision "shell", privileged: true, keep_color: false, path: "../scripts/stackinabox/init.sh"
   end
 

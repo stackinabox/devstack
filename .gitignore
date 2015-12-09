@@ -1,3 +1,4 @@
 # Vagrant
 .DS_Store
 demo_key.priv
+build/
