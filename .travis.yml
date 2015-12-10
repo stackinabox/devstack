@@ -1,0 +1,7 @@
+language: general
+before_install:
+    - cd scripts/install-vagrant;./install-vagrant-linux-ubuntu.sh;
+install:
+    - cd vagrant;./build.sh
+script:
+    - cd vagrant;./package.sh
