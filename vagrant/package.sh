@@ -10,12 +10,12 @@ mkdir -p $topDir/build
 rm -f $topDir/build/*
 
 # defragment disks
-$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
-$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
+#$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
+#$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
 
 # shrink disks
-$topDir/scripts/minimize/vmware-vdiskmanager -k $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
-$topDir/scripts/minimize/vmware-vdiskmanager -k $HOME/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
+#$topDir/scripts/minimize/vmware-vdiskmanager -k $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
+#$topDir/scripts/minimize/vmware-vdiskmanager -k $HOME/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
 
 # create vagrant box
 vagrant package --base stackinabox --output $topDir/build/stackinabox.box

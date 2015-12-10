@@ -21,5 +21,3 @@ pushd $topDir/scripts/install-plugin
 ./install-plugin-vbguest.sh
 ./install-plugin-cachier.sh
 popd
-
-sudo apt-get update -y
