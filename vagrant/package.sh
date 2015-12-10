@@ -17,4 +17,3 @@ vagrant package --base stackinabox --output ../../build/stackinabox.box
 
 # copy
 cp ../demo_key.priv ../build/
-
