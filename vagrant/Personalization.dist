@@ -1,5 +1,5 @@
 # Use NFS? (won't work on windows)
-$use_nfs = true
+$use_nfs = false
 
 # Box name
 $box = "ubuntu/trusty64"
