@@ -1,10 +1,10 @@
 language: generic
 before_install:
-    - cd scripts/install-vagrant;./install-vagrant-linux-ubuntu.sh;
+    - scripts/install-vagrant/install-vagrant-linux-ubuntu.sh;
 install:
-    - sudo -E su $USER -c 'cd $HOME/stackinabox/vagrant/;./build.sh'
+    - sudo -E su $USER -c 'vagrant/build.sh'
 script:
-    - sudo -E su $USER -c 'cd $HOME/stackinabox/vagrant/;./package.sh'
+    - sudo -E su $USER -c 'vagrant/package.sh'
 branches:
     only:
         - master

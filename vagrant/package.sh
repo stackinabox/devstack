@@ -1,19 +1,26 @@
 #!/usr/bin/env sh
 
+topDir=$(pwd)
+pushd $topDir/vagrant
+
+vagrant halt ## make sure vagrant vm is no longer running
+
 # create/clean build dir
-mkdir -p ../build
-rm -f ../../build/*
+mkdir -p $topDir/build
+rm -f $topDir/build/*
 
 # defragment disks
-../scripts/minimize/vmware-vdiskmanager -d ~/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
-../scripts/minimize/vmware-vdiskmanager -d ~/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
+$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
+$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
 
 # shrink disks
-../scripts/minimize/vmware-vdiskmanager -k ~/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
-../scripts/minimize/vmware-vdiskmanager -k ~/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
+$topDir/scripts/minimize/vmware-vdiskmanager -k $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
+$topDir/scripts/minimize/vmware-vdiskmanager -k $HOME/VirtualBox\ VMs/stackinabox/box-disk2.vmdk
 
 # create vagrant box
-vagrant package --base stackinabox --output ../../build/stackinabox.box
+vagrant package --base stackinabox --output $topDir/build/stackinabox.box
 
 # copy
-cp ../demo_key.priv ../build/
+cp $topDir/demo_key.priv $topDir/build/
+
+popd

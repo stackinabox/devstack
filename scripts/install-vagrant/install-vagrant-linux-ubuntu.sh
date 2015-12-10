@@ -11,9 +11,12 @@ sudo dpkg -i vagrant_1.7.4_x86_64.deb
 IAM=`whoami`
 sudo usermod -a -G vboxusers $IAM
 
-cd ../config-sudoers
+topDir=$(pwd)
+pushd $topDir/scripts/config-sudoers
 sudo sh -c ./config-sudoers-linux-ubuntu.sh
+popd
 
-cd ../install-plugin
+pushd $topDir/scripts/install-plugin
 ./install-plugin-vbguest.sh
 ./install-plugin-cachier.sh
+popd
