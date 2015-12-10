@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 
 topDir=$(pwd)
 pushd $topDir/vagrant
