@@ -9,7 +9,7 @@ wget https://releases.hashicorp.com/vagrant/1.7.4/vagrant_1.7.4_x86_64.deb
 sudo dpkg -i vagrant_1.7.4_x86_64.deb
 
 IAM=`whoami`
-sudo adduser $IAM vboxusers
+sudo usermod -a -G vboxusers
 
 cd ../config-sudoers
 sudo sh -c ./config-sudoers-linux-ubuntu.sh

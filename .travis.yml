@@ -1,7 +1,15 @@
-language: general
+language: generic
 before_install:
     - cd scripts/install-vagrant;./install-vagrant-linux-ubuntu.sh;
 install:
     - cd vagrant;./build.sh
 script:
-    - cd vagrant;./package.sh
+    - sudo -E su $USER -c 'cd vagrant;./package.sh'
+branches:
+    only:
+        - master
+addons:
+    artifacts: true
+    s3_region: "us-east-1"
+sudo: required
+dist: trusty
