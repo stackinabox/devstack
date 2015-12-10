@@ -16,7 +16,8 @@ stackinabox [![Build Status](https://travis-ci.org/tpouyer/stackinabox.svg?branc
       - [cachier](https://github.com/fgrehm/vagrant-cachier) Run ````vagrant plugin install vagrant-cachier````
   - Copy `vagrant/Personalization.dist` to `vagrant/Personalization` and edit parameters for your needs
     ````cp vagrant/Personalization.dist vagrant/Personalization````
-    - __NOTE__
+    - __NOTE:__ You must set a value for the `$disk` property in the copied `Personalization` file  
+    ````$disk = '/Users/tpouyer/VirtualBox VMs/stackinabox/box-disk2.vmdk'````  
   - run build:
     ````vagrant/build.sh````
   - You can now open your browser to `http://192.168.27.100` to see the Horizon web console
