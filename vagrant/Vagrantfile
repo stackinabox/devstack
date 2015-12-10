@@ -164,7 +164,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      # setup PIP cache for DevStack resources
      config.vm.provision "file", source: "../scripts/stackinabox/pip.conf", destination: "/home/vagrant/.pip/pip.conf"
      config.cache.enable :generic, { "pip" => { :cache_dir => "/var/cache/pip" } }
-     
+
      if $use_nfs
        config.cache.synced_folder_opts = {
          type: :nfs,
@@ -177,8 +177,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
      print "You can install it by `vagrant plugin install vagrant-cachier`"
   end
 
+  if Vagrant.has_plugin?("vagrant-vbguest")
+    config.vbguest.auto_update = false
+  end
+
   config.vm.define "stackinabox" do |stackinabox|
-    
+
     config.vm.synced_folder "..", "/vagrant", :nfs => $use_nfs
     config.ssh.forward_agent = true
     config.ssh.insert_key = false
@@ -227,7 +231,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--vtxvpid", "on"] # if --hwvirtex on
       vb.customize ["modifyvm", :id, "--vtxux", "on"] # if --vtux on (Intel VT-x only) enables unrestricted guest mode
       vb.customize ["modifyvm", :id, "--boot1", "disk"] # tells vm to boot from disk only
-      vb.customize ["modifyvm", :id, "--rtcuseutc", "on"] # lets the real-time clock (RTC) operate in UTC time   
+      vb.customize ["modifyvm", :id, "--rtcuseutc", "on"] # lets the real-time clock (RTC) operate in UTC time
       vb.customize ["modifyvm", :id, "--audio", "none"]
       vb.customize ["modifyvm", :id, "--clipboard", "disabled"]
       vb.customize ["modifyvm", :id, "--usbehci", "off"]
