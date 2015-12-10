@@ -1,6 +1,7 @@
 language: generic
 before_install:
     - scripts/install-vagrant/install-vagrant-linux-ubuntu.sh;
+    - sudo usermod -a -G vboxusers $USER
 install:
     - sudo -E su $USER -c 'vagrant/build.sh'
 script:
