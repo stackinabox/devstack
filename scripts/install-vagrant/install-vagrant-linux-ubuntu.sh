@@ -22,4 +22,4 @@ pushd $topDir/scripts/install-plugin
 popd
 
 sudo apt-get update -y
-sudo restart -r
+sudo shutdown -r now
