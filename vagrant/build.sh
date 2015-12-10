@@ -1,4 +1,4 @@
-#!/user/bin/env sh
+#!/usr/bin/env sh
 
 cp Personalization.dict Personalization
 vagrant up --provider=virtualbox

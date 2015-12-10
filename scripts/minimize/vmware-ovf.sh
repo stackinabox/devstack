@@ -1,0 +1,66 @@
+
+#!/bin/bash
+
+/Applications/VMware\ Fusion.app/Contents/Library/VMware\ OVF\ Tool/ovftool \
+        --name=stackinabox \
+      	--computerName:vm=stackinabox \
+      	--compress=9 \
+      	--maxVirtualHardwareVersion=8 \
+      	--sourceType=VMX \
+      	--targetType=OVF \
+      	--numberOfCpus:vm=4 \
+      	--memorySize:vm=8192 \
+      	--diskSize:vm,5=40960 \
+        --diskSize:vm,6=204800 \
+      	--diskMode=monolithicFlat \
+      	--overwrite \
+      	--powerOffSource \
+      	--powerOffTarget \
+        --allowExtraConfig \
+        --extraConfig:vhv.enable=TRUE \
+        --extraConfig:uuid.action=keep \
+        --extraConfig:ethernet1.addresstype=static \
+        --extraConfig:ethernet1.connectiontype=custom \
+        --extraConfig:ethernet1.present=TRUE \
+        --extraConfig:ethernet1.virtualdev=e1000 \
+        --extraConfig:ethernet1.vnet=vmnet2 \
+        --extraConfig:ethernet1.startConnected=TRUE \
+        --extraConfig:ethernet2.addresstype=static \
+        --extraConfig:ethernet2.connectiontype=custom \
+        --extraConfig:ethernet2.present=TRUE \
+        --extraConfig:ethernet2.virtualdev=e1000 \
+        --extraConfig:ethernet2.vnet=vmnet3 \
+        --extraConfig:ethernet2.startConnected=TRUE \
+        --extraConfig:logging=FALSE \
+        --extraConfig:MemTrimRate=0 \
+        --extraConfig:MemAllowAutoScaleDown=FALSE \
+        --extraConfig:mainMem.backing=swap \
+        --extraConfig:mainMem.allow8GB=TRUE \
+        --extraConfig:mainMem.prefetchMB=8192 \
+        --extraConfig:sched.mem.pshare.enable=FALSE \
+        --extraConfig:snapshot.disabled=TRUE \
+        --extraConfig:isolation.tools.unity.disable=TRUE \
+        --extraConfig:isolation.tools.hgfs.disable=TRUE \
+        --extraConfig:isolation.tools.copy.disable=TRUE \
+        --extraConfig:isolation.tools.paste.disable=TRUE \
+        --extraConfig:isolation.tools.dnd.disable=TRUE \
+        --extraConfig:unity.allowCompostingInGuest=FALSE \
+        --extraConfig:unity.enableLaunchMenu=FALSE \
+        --extraConfig:unity.showBadges=FALSE \
+        --extraConfig:unity.showBorders=FALSE \
+        --extraConfig:unity.wasCapable=FALSE \
+        --extraConfig:priority.grabbed=high \
+        --extraConfig:priority.ungrabbed=high \
+        --extraConfig:mks.enable3d=FALSE \
+        --extraConfig:remotedisplay.vnc.enabled=FALSE \
+        --extraConfig:proxyapps.publishtohost=FALSE \
+        --extraConfig:host.TSC.noForceSync=TRUE \
+        --extraConfig:host.useFastclock=FALSE \
+        --extraConfig:hard-disk.useUnbuffered=TRUE \
+        --extraConfig:aiomgr.buffered=TRUE \
+        --extraConfig:gui.available=FALSE \
+        --extraConfig:guestOS=ubuntu-64 \
+      	--X:logLevel=verbose \
+      	--X:logToConsole \
+        /Users/tpouyer/Development/workspace/github/stackinabox/vagrant/.vagrant/machines/stackinabox/vmware_fusion/f0cbd3b8-d73b-4e57-bd47-0a8cd848a4d1/ubuntu-trustry-vagrant-amd64.vmx \
+      /Users/tpouyer/Development/workspace/github/stackinabox/build

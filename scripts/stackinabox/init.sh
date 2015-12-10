@@ -12,6 +12,14 @@ echo "##########################################################################
 echo ""
 echo ""
 
+# Disable interactive options when installing with apt-get
+export DEBIAN_FRONTEND=noninteractive
+
+# Don't automatically install recommended or suggested packages
+mkdir -p /etc/apt/apt.config.d
+echo 'APT::Install-Recommends "0";' >> /etc/apt/apt.config.d/99local
+echo 'APT::Install-Suggests "0";' >> /etc/apt/apt.config.d/99local
+
 # Add software repository
 apt-get update -y
 apt-get install -y python-software-properties software-properties-common
@@ -22,14 +30,6 @@ add-apt-repository ppa:ubuntu-lxc/lxd-stable
 
 # Update repositories
 apt-get update -y
-
-# Disable interactive options when installing with apt-get
-export DEBIAN_FRONTEND=noninteractive
-
-# Don't automatically install recommended or suggested packages
-mkdir -p /etc/apt/apt.config.d
-echo 'APT::Install-Recommends "0";' >> /etc/apt/apt.config.d/99local
-echo 'APT::Install-Suggests "0";' >> /etc/apt/apt.config.d/99local
 
 # Disable firewall (this is not production)
 ufw disable
@@ -103,20 +103,24 @@ apt-get install -y git
 # Clone devstack repo
 echo "Cloning DevStack repo from branch '${RELEASE_BRANCH}'"
 mkdir -p /opt/stack
-cd /opt/stack
-git clone https://git.openstack.org/openstack-dev/devstack.git
-cd devstack
-git checkout $RELEASE_BRANCH
-sed -i 's/git:/https:/g' stackrc
+git clone https://git.openstack.org/openstack-dev/devstack.git /opt/stack/devstack -b $RELEASE_BRANCH
+#sed -i 's/git:/https:/g' stackrc
 
 # add local.conf to /opt/devstack folder
 cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
 
-# update RELEASE_BRANCH variable in local.conf to match existing
-sed -i 's/RELEASE_BRANCH=/RELEASE_BRANCH=${RELEASE_BRANCH}/g' /etc/default/shellinabox
+# update RELEASE_BRANCH variable in local.conf to match existing 
+# (use '@' as delim in sed b/c $RELEASE_BRANCH may contain '/')
+sed -i "s@RELEASE_BRANCH=@RELEASE_BRANCH=$RELEASE_BRANCH@" /opt/stack/devstack/local.conf
 
 # make vagrant user owner of /opt/stack
 chown -R vagrant:vagrant /opt/stack
+
+# setup lxd directory
+umount /data
+mkdir -p /var/lib/lxd
+sed -i 's/data/var\/lib\/lxd/g' /etc/fstab
+mount -a
 
 # don't assign IP to eth2 yet
 ifconfig eth2 0.0.0.0
@@ -135,6 +139,7 @@ ifconfig br-ex promisc up
 
 # assign ip from public network to bridge (br-ex)
 cat >> /etc/network/interfaces <<'EOF'
+
 auto eth2
 iface eth2 inet manual
     up ifconfig $IFACE 0.0.0.0 up
@@ -175,14 +180,18 @@ nova secgroup-add-group-rule default default tcp 22 22
 # source openrc with admin privledges
 source /opt/stack/devstack/openrc admin admin
 
+# delete the invisible_to_admin tenant (not needed)
+keystone tenant-delete invisible_to_admin
+
 # add lxd compatible images to openstack
 echo "Adding LXD compatible images to OpenStack"
 
 mkdir -p /vagrant/scripts/lxd/images
 cd /vagrant/scripts/lxd/images
+rm -rf ./*
 
-wget https://github.com/tpouyer/lxc-cloud-images/releases/download/stable%2Fliberty/lxc-cloud-images.tar.gz
-tar -xvzf lxc-cloud-images.tar.gz
+wget -nv https://github.com/tpouyer/lxc-cloud-images/releases/download/stable%2Fliberty/lxc-cloud-images.tar.xz
+tar -xf lxc-cloud-images.tar.xz
 
 chmod 755 import-images.sh
 ./import-images.sh
@@ -206,7 +215,7 @@ sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
 sleep 60
 
 # clean up after ourselves
-/vagrant/scripts/stackinabox/clean.sh
+/vagrant/scripts/minimize/clean.sh
 
-# restart OS so the vagrant user will have lxd rights upon startup
+# restart OS so the vagrant user will have 'lxd' in their groups
 shutdown -r now
