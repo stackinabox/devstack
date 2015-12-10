@@ -3,6 +3,7 @@
 sudo sh -c "echo 'deb http://download.virtualbox.org/virtualbox/debian '$(lsb_release -cs)' contrib non-free' > /etc/apt/sources.list.d/virtualbox.list"
 wget -q http://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc -O- | sudo apt-key add -
 sudo apt-get update -y
+sudo apt-get install -y linux-headers-$(uname -r)
 sudo apt-get install -y virtualbox-5.0
 
 wget https://releases.hashicorp.com/vagrant/1.7.4/vagrant_1.7.4_x86_64.deb
@@ -22,4 +23,3 @@ pushd $topDir/scripts/install-plugin
 popd
 
 sudo apt-get update -y
-sudo shutdown -r now
