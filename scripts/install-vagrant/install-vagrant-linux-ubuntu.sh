@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo sh -c "echo 'deb http://download.virtualbox.org/virtualbox/debian '$(lsb_release -cs)' contrib non-free' > /etc/apt/sources.list.d/virtualbox.list" 
+sudo sh -c "echo 'deb http://download.virtualbox.org/virtualbox/debian '$(lsb_release -cs)' contrib non-free' > /etc/apt/sources.list.d/virtualbox.list"
 wget -q http://download.virtualbox.org/virtualbox/debian/oracle_vbox.asc -O- | sudo apt-key add -
 sudo apt-get update -y
 sudo apt-get install -y virtualbox-5.0
@@ -20,3 +20,6 @@ pushd $topDir/scripts/install-plugin
 ./install-plugin-vbguest.sh
 ./install-plugin-cachier.sh
 popd
+
+sudo apt-get update -y
+sudo restart -r
