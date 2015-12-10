@@ -2,7 +2,7 @@ language: generic
 before_install:
     - cd scripts/install-vagrant;./install-vagrant-linux-ubuntu.sh;
 install:
-    - cd vagrant;./build.sh
+    - sudo -E su $USER -c 'cd vagrant;./build.sh'
 script:
     - sudo -E su $USER -c 'cd vagrant;./package.sh'
 branches:
