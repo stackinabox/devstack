@@ -3,8 +3,8 @@
 topDir=$(pwd)
 pushd $topDir/vagrant
 
-touch ./Personalization
-cat >> ./Personalization <<EOF
+touch $topDir/vagrant/Personalization
+cat >> $topDir/vagrant/Personalization <<EOF
 # Use NFS? (won't work on windows)
 \$use_nfs = false
 
@@ -12,7 +12,7 @@ cat >> ./Personalization <<EOF
 \$box = "stackinabox"
 
 # Box url
-\$box_url = "$(topDir)/build/stackinabox.box"
+\$box_url = "$topDir/build/stackinabox.box"
 
 # Number of CPU's (min 2, recommend 4) adjust to your machine
 \$cpus = 2

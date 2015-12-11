@@ -6,8 +6,8 @@ pushd $topDir/scripts/test
 mkdir -p $topDir/test
 git clone https://github.com/tpouyer/stackina-base-box.git $topDir/test
 
-touch ../../test/vagrant/Personalization
-cat >> ../../test/vagrant/Personalization <<EOF
+touch $topDir/test/vagrant/Personalization
+cat >> $topDir/test/vagrant/Personalization <<EOF
 # Use NFS? (won't work on windows)
 \$use_nfs = false
 
@@ -15,7 +15,7 @@ cat >> ../../test/vagrant/Personalization <<EOF
 \$box = "stackina-base-box"
 
 # Box url
-\$box_url = "$(topDir)/build/stackinabox.box"
+\$box_url = "$topDir/build/stackinabox.box"
 
 # Number of CPU's (min 2, recommend 4) adjust to your machine
 \$cpus = 2
