@@ -19,4 +19,4 @@ addons:
       - $HOME/build/stackinabox.box
       - $HOME/build/demo_key.priv
 sudo: required
-dist: trusty
+

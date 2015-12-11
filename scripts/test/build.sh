@@ -21,7 +21,7 @@ cat >> $topDir/test/vagrant/Personalization <<EOF
 \$cpus = 2
 
 # Amount of RAM (min 4096, recommed 8192) adjust to your machine
-\$memory = 4096
+\$memory = 2048
 EOF
 
 vagrant up --provider=virtualbox
