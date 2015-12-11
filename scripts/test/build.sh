@@ -7,7 +7,7 @@ mkdir -p $topDir/test
 git clone https://github.com/tpouyer/stackina-base-box.git $topDir/test
 
 touch $topDir/test/vagrant/Personalization
-cat >> $topDir/test/vagrant/Personalization <<EOF
+cat >> $(topDir)/test/vagrant/Personalization <<EOF
 # Use NFS? (won't work on windows)
 \$use_nfs = false
 
