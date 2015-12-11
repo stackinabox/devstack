@@ -9,10 +9,10 @@ cat >> $topDir/vagrant/Personalization <<EOF
 \$use_nfs = false
 
 # Box name
-\$box = "stackinabox"
+\$box = "ubuntu/trusty64"
 
 # Box url
-\$box_url = "$topDir/build/stackinabox.box"
+\$box_url = "https://atlas.hashicorp.com/ubuntu/boxes/trusty64"
 
 # Number of CPU's (min 2, recommend 4) adjust to your machine
 \$cpus = 2
