@@ -18,10 +18,10 @@ cat >> $topDir/test/vagrant/Personalization <<EOF
 \$box_url = "$topDir/build/stackinabox.box"
 
 # Number of CPU's (min 2, recommend 4) adjust to your machine
-\$cpus = 2
+\$cpus = 4
 
 # Amount of RAM (min 4096, recommed 8192) adjust to your machine
-\$memory = 2048
+\$memory = 8192
 EOF
 
 vagrant up --provider=virtualbox
