@@ -6,7 +6,7 @@ pushd $topDir/scripts/test
 mkdir -p $topDir/test
 git clone https://github.com/tpouyer/stackina-base-box.git $topDir/test
 
-touch $topDir/test/vagrant/Personalization
+touch ../../test/vagrant/Personalization
 cat >> ../../test/vagrant/Personalization <<EOF
 # Use NFS? (won't work on windows)
 \$use_nfs = false

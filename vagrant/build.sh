@@ -2,6 +2,8 @@
 
 topDir=$(pwd)
 pushd $topDir/vagrant
+
+touch ./Personalization
 cat >> ./Personalization <<EOF
 # Use NFS? (won't work on windows)
 \$use_nfs = false
