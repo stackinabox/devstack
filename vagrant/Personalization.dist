@@ -12,3 +12,6 @@ $cpus = 4
 
 # Amount of RAM (min 4096, recommed 8192) adjust to your machine
 $memory = 8192
+
+# Which release branch should we build? ( stable/juno | stable/kilo | stable/liberty | master )
+$release_branch = "stable/liberty"

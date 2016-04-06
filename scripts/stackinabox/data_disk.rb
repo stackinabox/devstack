@@ -1,12 +1,12 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-VM_NAME ||= ENV['VM_NAME'] || "ubuntu1404-dev"
+VM_NAME ||= ENV['VM_NAME'] || "stackinabox"
 
 HOME = ENV['HOME']
-DATA_DISK_PATH = "#{HOME}/VirtualDisks"
+DATA_DISK_PATH = "#{HOME}/VirtualBox VMs"
 FileUtils.mkdir_p DATA_DISK_PATH
-DATA_DISK_FILE = "#{DATA_DISK_PATH}/data_disk.vmdk"
+DATA_DISK_FILE = "#{DATA_DISK_PATH}/box-disk2.vmdk"
 DATA_DISK_FORMAT = 'VMDK'
 DATA_DISK_SIZE = 500 * 1024
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # install btrfs helpers
-apt-get install -y  btrfs-tools
+sudo apt-get install -y btrfs-tools
 
 # partition the data disk
 disks=$(ls /dev/sd?)

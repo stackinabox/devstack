@@ -1,47 +1,47 @@
 #!/bin/bash -ux
 
 # delete all linux headers
-dpkg --list | awk '{ print $2 }' | grep linux-headers | xargs apt-get -y purge
+#dpkg --list | awk '{ print $2 }' | grep linux-headers | xargs apt-get -y purge
 
 # this removes specific linux kernels, such as
 # linux-image-3.11.0-15-generic but 
 # * keeps the current kernel
 # * does not touch the virtual packages, e.g.'linux-image-generic', etc.
 #
-dpkg --list | awk '{ print $2 }' | grep 'linux-image-3.*-generic' | grep -v `uname -r` | xargs apt-get -y purge
+#dpkg --list | awk '{ print $2 }' | grep 'linux-image-3.*-generic' | grep -v `uname -r` | xargs apt-get -y purge
 
 # delete linux source
-dpkg --list | awk '{ print $2 }' | grep linux-source | xargs apt-get -y purge
+#dpkg --list | awk '{ print $2 }' | grep linux-source | xargs apt-get -y purge
 
 # delete development packages
-dpkg --list | awk '{ print $2 }' | grep -- '-dev$' | xargs apt-get -y purge
+sudo dpkg --list | awk '{ print $2 }' | grep -- '-dev$' | xargs sudo apt-get -qqy purge
 
 # delete compilers and other development tools
-apt-get -y purge cpp gcc g++
+#apt-get -y purge cpp gcc g++
 
 # delete X11 libraries
-apt-get -y purge libx11-data libxmuu1 libx11-6 libxext6
+sudo apt-get -qqy purge libx11-data libxmuu1 libx11-6 libxext6
 
 # delete obsolete networking
-apt-get -y purge ppp pppconfig pppoeconf
+sudo apt-get -qqy purge ppp pppconfig pppoeconf
 
 # delete oddities
-apt-get -y purge popularity-contest
+sudo apt-get -qqy purge popularity-contest
 
 # delete cloud-init
-apt-get -y purge cloud-init
+sudo apt-get -qqy purge cloud-init
 
 # delete ubuntu's landscape-client
-apt-get -y purge landscape-client
+sudo apt-get -qqy purge landscape-client
 
 # delete radvd package
-apt-get -y purge radvd
+sudo apt-get -qqy purge radvd
 
 # delete puppet
-apt-get -y purge puppet
+sudo apt-get -qqy purge puppet
 
 # delete chef
-apt-get -y purge chef
+sudo apt-get -qqy purge chef
 
 # delete .git directories from /opt/stack/xxx
 find /opt/stack -maxdepth 2 -type d | grep '.git' | xargs rm -rf
@@ -50,18 +50,18 @@ find /opt/stack -maxdepth 2 -type d | grep '.git' | xargs rm -rf
 find /opt/stack -maxdepth 2 -type d | grep 'doc' | xargs rm -rf
 
 # remove all uneeded packages acording to apt
-apt-get -y autoremove
-apt-get -y autoclean
-apt-get -y clean
+sudo apt-get -qqy autoremove
+sudo apt-get -qqy autoclean
+sudo apt-get -qqy clean
 
 # delete python library cache
-rm -rf /var/cache/pip/*
+sudo rm -rf /var/cache/pip/*
 
 # Clean up the last logged in users logs
-rm -f /var/log/wtmp /var/log/btmp
+sudo rm -f /var/log/wtmp /var/log/btmp
 
 # clean up log files /var/log
-find /var/log -type f | grep '.log' | xargs truncate -s 0
+sudo bash -c "find /var/log -type f | grep '.log' | xargs truncate -s 0"
 find /opt/stack/logs -type f | grep '.log' | xargs truncate -s 0
 
 # clear terminal history
@@ -76,5 +76,6 @@ history -c
 #mkswap /swapfile
 
 # Zero disk
-dd if=/dev/zero of=/EMPTY bs=1M
-rm -rf /EMPTY
+sudo dd if=/dev/zero of=/EMPTY bs=1M
+
+sudo rm -rf /EMPTY
