@@ -42,7 +42,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   if Vagrant.has_plugin?("vagrant-vbguest")
-    config.vbguest.auto_update = true
+    config.vbguest.auto_update = false
   end
 
   #if !Vagrant.has_plugin?("vagrant-reload")
@@ -61,7 +61,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     stackinabox.vm.box_url = $box_url
     stackinabox.vm.box_download_insecure = true
 
-    stackinabox.vm.hostname = "stackinabox"
+    stackinabox.vm.hostname = "openstack.stackinabox.io"
 
     # eth0, this is the vbox "management" network (10.0.2.x), auto created/configured by vagrant, uses NAT
     # not defined here b/c vbox creates this network behind the scenes
@@ -123,12 +123,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
 
-    #stackinabox.vm.provision :reload
-    
-    #stackinabox.vm.provision :shell, name: "operations", privileged: true, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "operations", "init.sh"), __FILE__)
-      
-    #stackinabox.vm.provision :shell, name: "chef", privileged: true, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "chef", "init.sh"), __FILE__)
+    # install docker
+    stackinabox.vm.provision "shell", name: "install_docker", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "init.sh"), __FILE__)
 
-    
   end
 end
