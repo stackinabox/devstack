@@ -61,8 +61,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     stackinabox.vm.box_url = $box_url
     stackinabox.vm.box_download_insecure = true
 
-    stackinabox.vm.hostname = "openstack.stackinabox.io"
-
+    #stackinabox.vm.hostname = "openstack.stackinabox.io"
+    stackinabox.vm.hostname = "stackinabox"
+    
     # eth0, this is the vbox "management" network (10.0.2.x), auto created/configured by vagrant, uses NAT
     # not defined here b/c vbox creates this network behind the scenes
 

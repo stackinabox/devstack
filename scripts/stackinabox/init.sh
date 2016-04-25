@@ -221,7 +221,9 @@ sudo usermod -a -G lxd vagrant
 newgrp lxd
 
 # add devstack to init.d so it will automatically start/stop with the machine
-sudo cp /vagrant/scripts/stackinabox/devstack /etc/init.d/devstack
+cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
+chmod 755 /opt/stack/devstack/stack-noscreenrc
+sudo cp /vagrant/scripts/stackinabox/devstack2 /etc/init.d/devstack
 sudo chmod +x /etc/init.d/devstack
 sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 

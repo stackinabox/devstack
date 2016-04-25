@@ -1,0 +1,45 @@
+#!/bin/bash
+
+/usr/local/bin/glance-registry --config-file=/etc/glance/glance-registry.conf >> /opt/stack/logs/g-reg.log 2>&1 &
+
+/usr/local/bin/glance-api --config-file=/etc/glance/glance-api.conf >> /opt/stack/logs/g-api.log 2>&1 &
+
+/usr/local/bin/nova-api >> /opt/stack/logs/n-api.log 2>&1 &
+
+/usr/local/bin/neutron-server --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini >> /opt/stack/logs/q-svc.log 2>&1 &
+
+/usr/local/bin/neutron-openvswitch-agent --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini >> /opt/stack/logs/q-agt.log 2>&1 &
+
+/usr/local/bin/neutron-dhcp-agent --config-file /etc/neutron/neutron.conf --config-file=/etc/neutron/dhcp_agent.ini >> /opt/stack/logs/q-dhcp.log 2>&1 &
+
+/usr/local/bin/neutron-l3-agent --config-file /etc/neutron/neutron.conf --config-file=/etc/neutron/l3_agent.ini >> /opt/stack/logs/q-l3.log 2>&1 &
+
+/usr/local/bin/neutron-metadata-agent --config-file /etc/neutron/neutron.conf --config-file=/etc/neutron/metadata_agent.ini >> /opt/stack/logs/q-meta.log 2>&1 &
+
+/usr/local/bin/nova-conductor --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-cond.log 2>&1 &
+
+/usr/local/bin/nova-cert --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-crt.log 2>&1 &
+
+/usr/local/bin/nova-scheduler --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-sch.log 2>&1 &
+
+/usr/local/bin/nova-consoleauth --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-cauth.log 2>&1 &
+
+/usr/local/bin/nova-objectstore --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-obj.log 2>&1 &
+
+/usr/local/bin/nova-compute --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-cpu.log 2>&1 &
+
+/usr/local/bin/cinder-api --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-api.log 2>&1 &
+
+/usr/local/bin/cinder-scheduler --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-sch.log 2>&1 &
+
+/usr/local/bin/cinder-backup --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-bak.log 2>&1 &
+
+/usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-vol.log 2>&1 &
+
+/usr/local/bin/heat-engine --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-eng.log 2>&1 &
+
+/usr/local/bin/heat-api --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api.log 2>&1 &
+
+/usr/local/bin/heat-api-cfn --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cfn.log 2>&1 &
+
+/usr/local/bin/heat-api-cloudwatch --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cw.log 2>&1 &
