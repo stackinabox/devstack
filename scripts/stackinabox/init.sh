@@ -2,6 +2,7 @@
 
 # set release branch to retrieve from git
 RELEASE_BRANCH=${1:-master}
+MTU=${2:-1500}
 
 echo ""
 echo ""
@@ -34,7 +35,7 @@ sudo add-apt-repository cloud-archive:liberty
 # comment above ppa and uncomment below to get development lxd builds
 sudo add-apt-repository ppa:ubuntu-lxc/lxd-git-master
 sudo apt-get -qqy update
-sudo apt-get -qqy install python-pip python-dev git #cgroup-lite cgmanager libpam-cgm
+sudo apt-get -qqy install python-pip python-dev git libvirt-bin #cgroup-lite cgmanager libpam-cgm
 sudo pip install -U pbr
 sudo pip install -U pip
 #sudo pip install -U requests==2.5.3
@@ -44,23 +45,40 @@ sudo pip install -U requests==2.8.1
 sudo pip install 'uwsgi'
 sudo chmod +x /usr/local/bin/uwsgi
 
+sudo update-alternatives --install /bin/sh sh /bin/bash 100
+
+# We need swap space to do any sort of scale testing with the Vagrant config.
+# Without this, we quickly run out of RAM and the kernel starts whacking things.
+sudo rm -f /swapfile1
+sudo dd if=/dev/zero of=/swapfile1 bs=1024 count=8388608
+sudo chown root:root /swapfile1
+sudo chmod 0600 /swapfile1
+sudo mkswap /swapfile1
+sudo swapon /swapfile1
+
 # Disable firewall (this is not production)
 sudo ufw disable
 
-# Update host configuration
-sudo hostname "stackinabox"
-sudo bash -c "echo 'stackinabox' > /etc/hostname"
-sudo bash -c 'cat > /etc/hosts' <<EOF
-127.0.1.1       stackinabox stackinabox
-127.0.0.1       localhost localdomain
+# To permit IP packets pass through different networks,
+# the network card should be configured with routing capability.
+sudo echo "net.ipv4.ip_forward = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "net.ipv4.conf.all.rp_filter=0" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "net.ipv4.conf.default.rp_filter=0" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "net.ipv6.conf.all.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "net.ipv6.conf.default.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "net.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo sysctl -p
 
-# The following lines are desirable for IPv6 capable hosts
-::1     ip6-localhost ip6-loopback
-fe00::0 ip6-localnet
-ff00::0 ip6-mcastprefix
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters
-ff02::3 ip6-allhosts
+# allow OpenStack nodes to route packets out through NATed network on HOST (this is the vagrant managed nic)
+sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
+# Update host configuration
+sudo bash -c "echo 'openstack.stackinabox.io' > /etc/hostname"
+#export eth1=`ifconfig eth1 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'`
+sudo bash -c 'cat > /etc/hosts' <<EOF
+127.0.0.1         localhost.localdomain     localhost openstack.stackinabox.io openstack
+192.168.27.100    openstack.stackinabox.io  openstack
+
 EOF
 
 # speed up DNS resolution
@@ -74,9 +92,9 @@ backoff-cutoff 2;
 link-timeout 10;
 interface "eth0"
 {
-  supersede host-name "stackinabox";
-  supersede domain-name "";
-  prepend domain-name-servers 127.0.0.1;
+  supersede host-name "openstack.stackinabox.io";
+  supersede domain-name "stackinabox.io";
+  prepend domain-name-servers 192.168.27.1, 8.8.8.8, 8.8.4.4;
   request subnet-mask,
           broadcast-address,
           routers,
@@ -88,18 +106,6 @@ interface "eth0"
           domain-name-servers;
 }
 EOF
-
-sudo service hostname restart
-
-# To permit IP packets pass through different networks,
-# the network card should be configured with routing capability.
-sudo echo "net.ipv4.ip_forward = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
-sudo echo "net.ipv4.conf.all.rp_filter=0" | sudo tee --append /etc/sysctl.conf > /dev/null
-sudo echo "net.ipv4.conf.default.rp_filter=0" | sudo tee --append /etc/sysctl.conf > /dev/null
-sudo sysctl -p
-
-# allow OpenStack nodes to route packets out through NATed network on HOST (this is the vagrant managed nic)
-sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
 # Restart networking
 sudo /etc/init.d/networking restart
@@ -159,23 +165,19 @@ EOF
 # Install NTP
 sudo apt-get install -y ntp
 
-# Set ntp.ubuntu.com as the direct source of time.
-# Also provide local time source in case of network interruption.
-sudo sed -i 's/server ntp.ubuntu.com/ \
-server ntp.ubuntu.com \
-server 0.pool.ntp.org \
-server 1.pool.ntp.org \
-server 2.pool.ntp.org \
-server 127.127.1.0 \
-fudge 127.127.1.0 stratum 10/g' /etc/ntp.conf
-
+# stop ntp service so we can set the pool to use
 sudo service ntp stop
 
-# initialize local time with value from pool.ntp.org
-sudo ntpdate pool.ntp.org
+# Set ntp.ubuntu.com as the direct source of time.
+sudo ntpdate us.pool.ntp.org
 
 # restart the NTP service
 sudo service ntp restart
+
+# Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
+# the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
+# sudo ip link set dev eth1 mtu $MTU
+# sudo ip link set dev eth2 mtu $MTU
 
 # Restart networking
 sudo /etc/init.d/networking restart
@@ -229,15 +231,17 @@ sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
 # install 'shellinabox' to make using this image on windows easier
 # shellinabox will be available at http://192.168.27.100:4200
-sudo apt-get install -y shellinabox
-sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
-sudo /etc/init.d/shellinabox restart
+# sudo apt-get install -y shellinabox
+# sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
+# sudo /etc/init.d/shellinabox restart
 
 # wait for openstack to startup
 sleep 60
 
 # clean up after ourselves
 /vagrant/scripts/minimize/clean.sh
+
+sudo rm -rf /var/lib/apt/lists/*
 
 sudo btrfs quota enable /var/lib/lxd
 

@@ -20,21 +20,16 @@ VAGRANTFILE_API_VERSION = "2"
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   if Vagrant.has_plugin?("vagrant-cachier")
-     config.cache.scope = :box # cache at the base box level
 
-     # setup apt-get cache
-     config.cache.enable :apt
+  	 # cache at the base box level
+     config.cache.scope = :box
 
-     # setup PIP cache for DevStack resources
-     config.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "pip.conf"), __FILE__), destination: "/home/vagrant/.pip/pip.conf"
-     config.cache.enable :generic, { "pip" => { :cache_dir => "/var/cache/pip" } }
-
-     if $use_nfs
-       config.cache.synced_folder_opts = {
-         type: :nfs,
-         mount_options: ['rw', 'vers=3', 'tcp', 'nolock']
-       }
-     end
+     # if $use_nfs
+     #   config.cache.synced_folder_opts = {
+     #     type: :nfs,
+     #     mount_options: ['rw', 'vers=3', 'tcp', 'nolock']
+     #   }
+     # end
 
   else
      print "vagrant-cachier plugin has not been found."
@@ -51,7 +46,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.define "stackinabox" do |stackinabox|
 
-    config.vm.synced_folder File.expand_path(File.join(vagrant_dir, ".."), __FILE__), "/vagrant", :nfs => $use_nfs
+    config.vm.synced_folder File.expand_path(File.join(vagrant_dir, ".."), __FILE__), "/vagrant"#, :nfs => $use_nfs
 
     config.ssh.forward_agent = true
     config.ssh.insert_key = false
@@ -61,8 +56,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     stackinabox.vm.box_url = $box_url
     stackinabox.vm.box_download_insecure = true
 
-    #stackinabox.vm.hostname = "openstack.stackinabox.io"
-    stackinabox.vm.hostname = "stackinabox"
+    stackinabox.vm.hostname = "openstack.stackinabox.io"
     
     # eth0, this is the vbox "management" network (10.0.2.x), auto created/configured by vagrant, uses NAT
     # not defined here b/c vbox creates this network behind the scenes
@@ -85,12 +79,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--cpus", "#{$cpus}"] # set number of vcpus
       vb.customize ["modifyvm", :id, "--memory", "#{$memory}"] # set amount of memory allocated vm memory
       vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"] # set guest OS type
-      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"] # enables DNS resolution from guest using host's DNS
+      #vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"] # enables DNS resolution from guest using host's DNS
       #vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"] # turn on promiscuous mode on nic 2
       vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"] # turn on promiscuous mode on nic 3
-      #vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
-      #vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
-      #vb.customize ["modifyvm", :id, "--nictype3", "virtio"]
+      vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+      vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
+      vb.customize ["modifyvm", :id, "--nictype3", "virtio"]
       vb.customize ["modifyvm", :id, "--pae", "on"] # enables PAE
       vb.customize ["modifyvm", :id, "--longmode", "on"] # enables long mode (64 bit mode in GUEST OS)
       vb.customize ["modifyvm", :id, "--hpet", "on"] # enables a High Precision Event Timer (HPET)
@@ -106,6 +100,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--clipboard", "disabled"]
       vb.customize ["modifyvm", :id, "--usbehci", "off"]
       vb.customize ["modifyvm", :id, "--vrde", "off"]
+      vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 10000]
 
       if add_storage_disk
         # create and add another disk for lxd image execution (btrfs)
@@ -120,12 +115,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       stackinabox.vm.provision :shell, name: "add_storage_disk", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "stackinabox", "data_disk_setup.sh"), __FILE__)
     end
 
-    stackinabox.vm.provision :shell, name: "openstack", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch}"
+    stackinabox.vm.provision :shell, name: "openstack", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
 
     stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
 
     # install docker
-    stackinabox.vm.provision "shell", name: "install_docker", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "init.sh"), __FILE__)
+    #stackinabox.vm.provision "shell", name: "install_docker", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "init.sh"), __FILE__)
 
   end
 end

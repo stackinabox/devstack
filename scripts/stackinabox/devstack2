@@ -14,10 +14,11 @@ start() {
   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
   # attach stack-volumes
-  losetup /dev/loop0 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file
+  losetup /dev/loop0 /opt/stack/data/stack-volumes-default-backing-file
+  losetup /dev/loop1 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file
 
   echo 'Starting DevStack' >&2
-  su -c "screen -dm -c /opt/stack/devstack/stack-noscreenrc" -s /bin/sh vagrant
+  su -c "/opt/stack/devstack/stack-noscreenrc" -s /bin/sh vagrant
   echo 'DevStack started' >&2
 }
 

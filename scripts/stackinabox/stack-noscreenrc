@@ -1,5 +1,11 @@
 #!/bin/bash
 
+/opt/stack/etcd/etcd-v2.2.2-linux-amd64/etcd --data-dir /opt/stack/etcd/db.etcd --advertise-client-urls http://0.0.0.0:4001  --listen-client-urls http://0.0.0.0:4001 >> /opt/stack/logs/etcd-server.log 2>&1 &
+
+sudo /usr/bin/docker daemon -H tcp://0.0.0.0:2375 --cluster-store etcd://localhost:4001 >> /opt/stack/logs/docker-engine.log 2>&1 &
+
+sudo PYTHONPATH=:/opt/stack/kuryr SERVICE_USER=admin SERVICE_PASSWORD=labstack SERVICE_TENANT_NAME=admin SERVICE_TOKEN=labstack IDENTIY_URL=http://127.0.0.1:5000/v2.0 python /opt/stack/kuryr/scripts/run_server.py  --config-file /etc/kuryr/kuryr.conf >> /opt/stack/logs/ >> /opt/stack/logs/kuryr.log 2>&1 &
+
 /usr/local/bin/glance-registry --config-file=/etc/glance/glance-registry.conf >> /opt/stack/logs/g-reg.log 2>&1 &
 
 /usr/local/bin/glance-api --config-file=/etc/glance/glance-api.conf >> /opt/stack/logs/g-api.log 2>&1 &
@@ -22,7 +28,11 @@
 
 /usr/local/bin/nova-scheduler --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-sch.log 2>&1 &
 
+/usr/local/bin/nova-spicehtml5proxy --config-file /etc/nova/nova.conf --web /usr/share/spice-html5 >> /opt/stack/logs/n-spice.log 2>&1 &
+
 /usr/local/bin/nova-consoleauth --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-cauth.log 2>&1 &
+
+/usr/local/bin/nova-serialproxy --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-sproxy.log 2>&1 &
 
 /usr/local/bin/nova-objectstore --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-obj.log 2>&1 &
 
