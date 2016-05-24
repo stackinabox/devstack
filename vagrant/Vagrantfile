@@ -47,6 +47,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define "stackinabox" do |stackinabox|
 
     config.vm.synced_folder File.expand_path(File.join(vagrant_dir, ".."), __FILE__), "/vagrant"#, :nfs => $use_nfs
+    #config.vm.synced_folder File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "runtime"), __FILE__), "/var/lib/docker", create: true
 
     config.ssh.forward_agent = true
     config.ssh.insert_key = false
@@ -79,7 +80,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--cpus", "#{$cpus}"] # set number of vcpus
       vb.customize ["modifyvm", :id, "--memory", "#{$memory}"] # set amount of memory allocated vm memory
       vb.customize ["modifyvm", :id, "--ostype", "Ubuntu_64"] # set guest OS type
-      #vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"] # enables DNS resolution from guest using host's DNS
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"] # enables DNS resolution from guest using host's DNS
       #vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"] # turn on promiscuous mode on nic 2
       vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"] # turn on promiscuous mode on nic 3
       vb.customize ["modifyvm", :id, "--nictype1", "virtio"]

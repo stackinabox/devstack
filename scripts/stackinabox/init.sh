@@ -176,8 +176,8 @@ sudo service ntp restart
 
 # Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
 # the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
-# sudo ip link set dev eth1 mtu $MTU
-# sudo ip link set dev eth2 mtu $MTU
+sudo ip link set dev eth1 mtu $MTU
+sudo ip link set dev eth2 mtu $MTU
 
 # Restart networking
 sudo /etc/init.d/networking restart
@@ -238,10 +238,16 @@ sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 # wait for openstack to startup
 sleep 60
 
-# clean up after ourselves
-/vagrant/scripts/minimize/clean.sh
+# install java (for use with udclient)
+sudo apt-get install -qqy default-jre
+sudo touch /etc/profile.d/java_home.sh
+sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
+export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/jre
+EOF
+sudo chmod 755 /etc/profile.d/java_home.sh
 
-sudo rm -rf /var/lib/apt/lists/*
+# clean up after ourselves
+/vagrant/scripts/minimize/clean.sh 
 
 sudo btrfs quota enable /var/lib/lxd
 

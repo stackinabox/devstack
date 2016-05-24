@@ -1,6 +1,10 @@
 # Use NFS? (won't work on windows)
 $use_nfs = false
 
+# Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
+# the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
+$mtu = 1500
+
 # Box name
 $box = "ubuntu/trusty64"
 

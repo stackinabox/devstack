@@ -1,10 +1,14 @@
 #!/bin/bash
 
-/opt/stack/etcd/etcd-v2.2.2-linux-amd64/etcd --data-dir /opt/stack/etcd/db.etcd --advertise-client-urls http://0.0.0.0:4001  --listen-client-urls http://0.0.0.0:4001 >> /opt/stack/logs/etcd-server.log 2>&1 &
+#/opt/stack/etcd/etcd-v2.2.2-linux-amd64/etcd --data-dir /opt/stack/etcd/db.etcd --advertise-client-urls http://0.0.0.0:4001  --listen-client-urls http://0.0.0.0:4001 >> /opt/stack/logs/etcd-server.log 2>&1 &
 
-sudo /usr/bin/docker daemon -H tcp://0.0.0.0:2375 --cluster-store etcd://localhost:4001 >> /opt/stack/logs/docker-engine.log 2>&1 &
+#sudo /usr/bin/docker daemon -H tcp://0.0.0.0:2375 --cluster-store etcd://localhost:4001 >> /opt/stack/logs/docker-engine.log 2>&1 &
 
-sudo PYTHONPATH=:/opt/stack/kuryr SERVICE_USER=admin SERVICE_PASSWORD=labstack SERVICE_TENANT_NAME=admin SERVICE_TOKEN=labstack IDENTIY_URL=http://127.0.0.1:5000/v2.0 python /opt/stack/kuryr/scripts/run_server.py  --config-file /etc/kuryr/kuryr.conf >> /opt/stack/logs/ >> /opt/stack/logs/kuryr.log 2>&1 &
+#sudo PYTHONPATH=:/opt/stack/kuryr SERVICE_USER=admin SERVICE_PASSWORD=labstack SERVICE_TENANT_NAME=admin SERVICE_TOKEN=labstack IDENTIY_URL=http://127.0.0.1:5000/v2.0 python /opt/stack/kuryr/scripts/run_server.py  --config-file /etc/kuryr/kuryr.conf >> /opt/stack/logs/kuryr.log 2>&1 &
+
+sudo ./scripts/run_kuryr.sh >> /opt/stack/logs/kuryr.log 2>&1 &
+
+sudo service docker restart >> /opt/stack/logs/docker-restart.log 2>&1 &
 
 /usr/local/bin/glance-registry --config-file=/etc/glance/glance-registry.conf >> /opt/stack/logs/g-reg.log 2>&1 &
 
