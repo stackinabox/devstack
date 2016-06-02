@@ -6,9 +6,9 @@
 
 #sudo PYTHONPATH=:/opt/stack/kuryr SERVICE_USER=admin SERVICE_PASSWORD=labstack SERVICE_TENANT_NAME=admin SERVICE_TOKEN=labstack IDENTIY_URL=http://127.0.0.1:5000/v2.0 python /opt/stack/kuryr/scripts/run_server.py  --config-file /etc/kuryr/kuryr.conf >> /opt/stack/logs/kuryr.log 2>&1 &
 
-sudo ./scripts/run_kuryr.sh >> /opt/stack/logs/kuryr.log 2>&1 &
+#sudo ./scripts/run_kuryr.sh >> /opt/stack/logs/kuryr.log 2>&1 &
 
-sudo service docker restart >> /opt/stack/logs/docker-restart.log 2>&1 &
+#sudo service docker restart >> /opt/stack/logs/docker-restart.log 2>&1 &
 
 /usr/local/bin/glance-registry --config-file=/etc/glance/glance-registry.conf >> /opt/stack/logs/g-reg.log 2>&1 &
 

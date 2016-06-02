@@ -54,6 +54,8 @@ sudo apt-get -qqy autoremove
 sudo apt-get -qqy autoclean
 sudo apt-get -qqy clean
 
+sudo rm -rf /var/lib/apt/lists/*
+
 # delete python library cache
 sudo rm -rf /var/cache/pip/*
 

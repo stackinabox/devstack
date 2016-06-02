@@ -49,12 +49,14 @@ sudo update-alternatives --install /bin/sh sh /bin/bash 100
 
 # We need swap space to do any sort of scale testing with the Vagrant config.
 # Without this, we quickly run out of RAM and the kernel starts whacking things.
-sudo rm -f /swapfile1
-sudo dd if=/dev/zero of=/swapfile1 bs=1024 count=8388608
-sudo chown root:root /swapfile1
-sudo chmod 0600 /swapfile1
-sudo mkswap /swapfile1
-sudo swapon /swapfile1
+sudo rm -f /swapfile
+sudo fallocate -l 4G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+sudo echo "vm.swappiness = 10" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "vm.vfs_cache_pressure = 50" | sudo tee --append /etc/sysctl.conf > /dev/null
+sudo echo "/swapfile   none    swap    sw    0   0" | sudo tee --append /etc/fstab > /dev/null
 
 # Disable firewall (this is not production)
 sudo ufw disable
@@ -73,13 +75,14 @@ sudo sysctl -p
 sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 
 # Update host configuration
-sudo bash -c "echo 'openstack.stackinabox.io' > /etc/hostname"
+sudo bash -c "echo 'openstack' > /etc/hostname"
 #export eth1=`ifconfig eth1 | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'`
 sudo bash -c 'cat > /etc/hosts' <<EOF
-127.0.0.1         localhost.localdomain     localhost openstack.stackinabox.io openstack
-192.168.27.100    openstack.stackinabox.io  openstack
-
+127.0.0.1         localhost
+192.168.27.100    openstack.stackinabox.io openstack
 EOF
+
+sudo hostname openstack
 
 # speed up DNS resolution
 sudo bash -c 'cat > /etc/dhcp/dhclient.conf' <<EOF
@@ -92,23 +95,20 @@ backoff-cutoff 2;
 link-timeout 10;
 interface "eth0"
 {
-  supersede host-name "openstack.stackinabox.io";
-  supersede domain-name "stackinabox.io";
+  #supersede host-name "openstack";
+  #supersede domain-name "stackinabox.io";
   prepend domain-name-servers 192.168.27.1, 8.8.8.8, 8.8.4.4;
-  request subnet-mask,
-          broadcast-address,
+  request subnet-mask, 
+          broadcast-address, 
+          time-offset, 
           routers,
-          domain-name,
-          domain-name-servers,
-          host-name;
-  require routers,
-          subnet-mask,
-          domain-name-servers;
+          domain-name, 
+          domain-name-servers, 
+          host-name,
+          netbios-name-servers, 
+          netbios-scope;
 }
 EOF
-
-# Restart networking
-sudo /etc/init.d/networking restart
 
 # enable cgroup memory limits
 sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="cgroup_enable=memory swapaccount=1 /g' /etc/default/grub
@@ -163,16 +163,8 @@ iface br-ex inet static
 EOF
 
 # Install NTP
-sudo apt-get install -y ntp
-
-# stop ntp service so we can set the pool to use
-sudo service ntp stop
-
-# Set ntp.ubuntu.com as the direct source of time.
-sudo ntpdate us.pool.ntp.org
-
-# restart the NTP service
-sudo service ntp restart
+# disabling b/c slow seed times at system startup are causing problems
+#sudo apt-get install -qqy ntp
 
 # Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
 # the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
@@ -230,27 +222,33 @@ sudo chmod +x /etc/init.d/devstack
 sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
 # install 'shellinabox' to make using this image on windows easier
-# shellinabox will be available at http://192.168.27.100:4200
-# sudo apt-get install -y shellinabox
-# sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
-# sudo /etc/init.d/shellinabox restart
+#shellinabox will be available at http://192.168.27.100:4200
+sudo apt-get install -y shellinabox
+sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
+sudo /etc/init.d/shellinabox restart
+
+# install java (for use with udclient)
+wget http://artifacts.stackinabox.io/ibm/java-jre/latest.txt
+ARTIFACT_VERSION=$(cat latest.txt)
+ARTIFACT_DOWNLOAD_URL=http://artifacts.stackinabox.io/ibm/java-jre/$ARTIFACT_VERSION/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+
+sudo mkdir -p /opt/java
+sudo wget $ARTIFACT_DOWNLOAD_URL
+sudo tar -zxf ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz -C /opt/java/
+sudo touch /etc/profile.d/java_home.sh
+sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
+export JAVA_HOME=/opt/java/ibm-java-x86_64-71/jre
+export PATH=$JAVA_HOME/bin:$PATH
+EOF
+sudo chmod 755 /etc/profile.d/java_home.sh
+
+sudo btrfs quota enable /var/lib/lxd
 
 # wait for openstack to startup
 sleep 60
 
 # clean up after ourselves
 /vagrant/scripts/minimize/clean.sh 
-
-# install java (for use with udclient)
-sudo apt-get update
-sudo apt-get install -qqy default-jre
-sudo touch /etc/profile.d/java_home.sh
-sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
-export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64/jre
-EOF
-sudo chmod 755 /etc/profile.d/java_home.sh
-
-sudo btrfs quota enable /var/lib/lxd
 
 # restart
 #sudo shutdown -P now

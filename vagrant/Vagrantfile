@@ -37,7 +37,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   if Vagrant.has_plugin?("vagrant-vbguest")
-    config.vbguest.auto_update = false
+    config.vbguest.auto_update = true
   end
 
   #if !Vagrant.has_plugin?("vagrant-reload")
@@ -67,6 +67,33 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     # eth2, this will be OpenStack's "public" network configured on vm by stackinabox.sh script and bridged to OpenvSwitch on VM
     stackinabox.vm.network "private_network", ip: "172.24.4.225", adapter_ip: "172.24.4.225", netmask: "255.255.255.0", auto_config: false
+
+    # install docker
+    stackinabox.vm.provision "shell", name: "install-docker", path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "docker", "init.sh"), __FILE__)
+
+    # run docker registry mirror
+    stackinabox.vm.provision "setup_registry", type: "docker" do |d|
+
+        d.run "registry",
+          image: "registry:2.4.1",
+          daemonize: true,
+          restart: "always",
+          args: "-e SEARCH_BACKEND=sqlalchemy -p 4000:5000 -v /var/lib/registry:/var/lib/registry -v /etc/docker/registry/config.yml:/etc/docker/registry/config.yml" 
+
+    end
+
+    # configure docker to use local registry mirror
+    stackinabox.vm.provision "shell", name: "enable-docker-registry-cache", path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "docker", "mirror.sh"), __FILE__)
+
+    stackinabox.vm.provision "setup_registry_ui", type: "docker" do |d|
+
+        d.run "registry-frontend",
+          image: "konradkleine/docker-registry-frontend:v2",
+          daemonize: true,
+          restart: "always",
+          args: "-p 4080:80 -e ENV_DOCKER_REGISTRY_HOST=192.168.27.100 -e ENV_DOCKER_REGISTRY_PORT=4000 -e ENV_MODE_BROWSE_ONLY=true -e ENV_DEFAULT_REPOSITORIES_PER_PAGE=50"
+
+    end
 
     # Provider-specific configuration
     stackinabox.vm.provider "virtualbox" do |vb|
@@ -120,8 +147,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
 
-    # install docker
-    #stackinabox.vm.provision "shell", name: "install_docker", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "init.sh"), __FILE__)
-
+    stackinabox.vm.provision :shell, name: "add_docker_heat_plugin", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "heat.sh"), __FILE__)
   end
 end
