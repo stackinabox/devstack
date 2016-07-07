@@ -8,36 +8,15 @@ vagrant_dir = File.expand_path(File.dirname(__FILE__))
 personalization = File.expand_path(File.join(vagrant_dir, "Personalization"), __FILE__)
 load personalization
 
-# only create and mount the disk on the first vagrant up run
-add_storage_disk = false
-if !File.exists?($disk)
-  add_storage_disk = true
-end
 
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
-  if Vagrant.has_plugin?("vagrant-cachier")
-
-  	 # cache at the base box level
-     config.cache.scope = :box
-
-     # if $use_nfs
-     #   config.cache.synced_folder_opts = {
-     #     type: :nfs,
-     #     mount_options: ['rw', 'vers=3', 'tcp', 'nolock']
-     #   }
-     # end
-
-  else
-     print "vagrant-cachier plugin has not been found."
-     print "You can install it by `vagrant plugin install vagrant-cachier`"
-  end
 
   if Vagrant.has_plugin?("vagrant-vbguest")
-    config.vbguest.auto_update = true
+    config.vbguest.auto_update = false
   end
 
   #if !Vagrant.has_plugin?("vagrant-reload")
@@ -68,33 +47,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # eth2, this will be OpenStack's "public" network configured on vm by stackinabox.sh script and bridged to OpenvSwitch on VM
     stackinabox.vm.network "private_network", ip: "172.24.4.225", adapter_ip: "172.24.4.225", netmask: "255.255.255.0", auto_config: false
 
-    # install docker
-    stackinabox.vm.provision "shell", name: "install-docker", path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "docker", "init.sh"), __FILE__)
-
-    # run docker registry mirror
-    stackinabox.vm.provision "setup_registry", type: "docker" do |d|
-
-        d.run "registry",
-          image: "registry:2.4.1",
-          daemonize: true,
-          restart: "always",
-          args: "-e SEARCH_BACKEND=sqlalchemy -p 4000:5000 -v /var/lib/registry:/var/lib/registry -v /etc/docker/registry/config.yml:/etc/docker/registry/config.yml" 
-
-    end
-
-    # configure docker to use local registry mirror
-    stackinabox.vm.provision "shell", name: "enable-docker-registry-cache", path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "docker", "mirror.sh"), __FILE__)
-
-    stackinabox.vm.provision "setup_registry_ui", type: "docker" do |d|
-
-        d.run "registry-frontend",
-          image: "konradkleine/docker-registry-frontend:v2",
-          daemonize: true,
-          restart: "always",
-          args: "-p 4080:80 -e ENV_DOCKER_REGISTRY_HOST=192.168.27.100 -e ENV_DOCKER_REGISTRY_PORT=4000 -e ENV_MODE_BROWSE_ONLY=true -e ENV_DEFAULT_REPOSITORIES_PER_PAGE=50"
-
-    end
-
     # Provider-specific configuration
     stackinabox.vm.provider "virtualbox" do |vb|
       # Don't boot with headless mode
@@ -117,7 +69,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--longmode", "on"] # enables long mode (64 bit mode in GUEST OS)
       vb.customize ["modifyvm", :id, "--hpet", "on"] # enables a High Precision Event Timer (HPET)
       vb.customize ["modifyvm", :id, "--hwvirtex", "on"] # turn on host hardware virtualization extensions (VT-x|AMD-V)
-      #vb.customize ["modifyvm", :id, "--paravirtprovider", "kvm"] # specifies which paravirtualization interface to provide to the guest operating system
       vb.customize ["modifyvm", :id, "--nestedpaging", "on"] # if --hwvirtex is on, this enables nested paging
       vb.customize ["modifyvm", :id, "--largepages", "on"] # if --hwvirtex & --nestedpaging are on
       vb.customize ["modifyvm", :id, "--vtxvpid", "on"] # if --hwvirtex on
@@ -130,23 +81,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["modifyvm", :id, "--vrde", "off"]
       vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 10000]
 
-      if add_storage_disk
-        # create and add another disk for lxd image execution (btrfs)
+      if !File.exists?($disk)
+        print $disk
         vb.customize ['createhd', '--filename', $disk, '--size', 500 * 1024]
-        vb.customize ['storageattach', :id, '--storagectl', 'SATAController', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', $disk]
       end
-
-    end
-
-    if add_storage_disk
-      # partition, format, and mount the btrfs disk we just created
-      stackinabox.vm.provision :shell, name: "add_storage_disk", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts",  "stackinabox", "data_disk_setup.sh"), __FILE__)
+      vb.customize ['storageattach', :id, '--storagectl', 'IDE Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', $disk]
     end
 
     stackinabox.vm.provision :shell, name: "openstack", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
 
-    stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
+#    stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
 
-    stackinabox.vm.provision :shell, name: "add_docker_heat_plugin", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "heat.sh"), __FILE__)
+#    stackinabox.vm.provision :shell, name: "add_docker_heat_plugin", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "heat.sh"), __FILE__)
   end
+
 end
