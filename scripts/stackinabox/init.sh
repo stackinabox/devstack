@@ -21,7 +21,7 @@ echo export LANG=en_US.UTF-8 >> ~/.bash_profile
 
 echo Updating...
 sudo apt-get -y update
-sudo apt-get install -y zfsutils-linux
+sudo apt-get install -y zfsutils-linux git
 
 echo Creating ZFS for lxd
 sudo zpool create -m /lxd -f lxd sdb
@@ -61,7 +61,7 @@ sudo echo "net.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.co
 sudo sysctl -p
 
 # allow OpenStack nodes to route packets out through NATed network on HOST (this is the vagrant managed nic)
-sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
 
 # Update host configuration
 sudo bash -c "echo 'openstack' > /etc/hostname"
@@ -81,17 +81,17 @@ reboot 0;
 select-timeout 0;
 initial-interval 1;
 backoff-cutoff 2;
-interface "eth0"
+interface "enp0s3"
 {
   prepend domain-name-servers 192.168.27.1, 8.8.8.8, 8.8.4.4;
-  request subnet-mask, 
-          broadcast-address, 
-          time-offset, 
+  request subnet-mask,
+          broadcast-address,
+          time-offset,
           routers,
-          domain-name, 
-          domain-name-servers, 
+          domain-name,
+          domain-name-servers,
           host-name,
-          netbios-name-servers, 
+          netbios-name-servers,
           netbios-scope;
 }
 EOF
@@ -106,18 +106,21 @@ echo "Cloning DevStack repo from branch \"${RELEASE_BRANCH}\""
 sudo mkdir -p /opt/stack
 sudo chown -R vagrant:vagrant /opt/stack
 git clone https://git.openstack.org/openstack-dev/devstack.git /opt/stack/devstack -b "${RELEASE_BRANCH}"
-
+#need to do below to stop devstack failing on test-requirements for lxd
+echo "Cloning nova-lxd repo from branch \"${RELEASE_BRANCH}\""
+git clone https://github.com/openstack/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
+rm -f /opt/stack/nova-lxd/test-requirements.txt
 # add local.conf to /opt/devstack folder
 cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
 
-# update RELEASE_BRANCH variable in local.conf to match existing 
+# update RELEASE_BRANCH variable in local.conf to match existing
 # (use '@' as delim in sed b/c $RELEASE_BRANCH may contain '/')
 sed -i "s@RELEASE_BRANCH=@RELEASE_BRANCH=$RELEASE_BRANCH@" /opt/stack/devstack/local.conf
 
 # don't assign IP to eth2 yet
-sudo ifconfig eth2 0.0.0.0
-sudo ifconfig eth2 promisc
-sudo ip link set dev eth2 up
+sudo ifconfig enp0s9 0.0.0.0
+sudo ifconfig enp0s9 promisc
+sudo ip link set dev enp0s9 up
 # gentelmen start your engines
 echo "Installing DevStack"
 cd /opt/stack/devstack
@@ -131,44 +134,43 @@ else
 fi
 
 # bridge eth2 to ovs for our public network
-sudo ovs-vsctl add-port br-ex eth2
+sudo ovs-vsctl add-port br-ex enp0s9
 sudo ifconfig br-ex promisc up
 
 # assign ip from public network to bridge (br-ex)
 sudo bash -c 'cat >> /etc/network/interfaces' <<'EOF'
-auto eth2
-iface eth2 inet manual
+auto enp0s9
+iface enp0s9 inet manual
     address 0.0.0.0
     up ifconfig $IFACE 0.0.0.0 up
     up ip link set $IFACE promisc on
     down ip link set $IFACE promisc off
     down ifconfig $IFACE down
-auto br-ex
-iface br-ex inet static
-    address 172.24.4.2
-    netmask 255.255.255.0
-    up ip link set $IFACE promisc on
-    down ip link set $IFACE promisc off
+
+    auto br-ex
+    iface br-ex inet static
+        address 172.24.4.2
+        netmask 255.255.255.0
+        up ip link set $IFACE promisc on
+        down ip link set $IFACE promisc off
 EOF
 
-# Install NTP
-# disabling b/c slow seed times at system startup are causing problems
-#sudo apt-get install -qqy ntp
+cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
+chmod 755 /opt/stack/devstack/stack-noscreenrc
+sudo cp /vagrant/scripts/stackinabox/devstack2 /etc/init.d/devstack
+sudo chmod +x /etc/init.d/devstack
+sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
-# Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
-# the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
-sudo ip link set dev eth1 mtu $MTU
-sudo ip link set dev eth2 mtu $MTU
+cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
+cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
 
-# Restart networking ???? TODO
-sudo systemctl restart networking.service 
-echo "export OS_DOMAIN_NAME=Default" >> /opt/stack/devstack/openrc
 # source openrc for openstack connection variables
-source /opt/stack/devstack/openrc demo demo
-
+source /home/vagrant/demo-openrc.sh labstack
 # add DNS nameserver entries to "private" subnet in 'demo' tenant
 echo "Updating dns_nameservers on the 'demo' tenant's private subnet"
 neutron subnet-update private-subnet --dns_nameservers list=true 8.8.8.8 8.8.4.4
+# allow ssh access to instances deployed with the 'default' security group
+openstack security group rule create default --proto tcp --dst-port 22
 
 # Heat needs to launch instances with a keypair, lets generate a 'default' keypair
 echo "Generating new keypair for the 'demo' tenant in /home/vagrant"
@@ -178,12 +180,8 @@ sudo chmod 400 /home/vagrant/demo_key.priv
 sudo chown vagrant:vagrant /home/vagrant/demo_key.priv
 
 # source openrc with admin privledges
-source /opt/stack/devstack/openrc admin admin
-
+source /home/vagrant/admin-openrc.sh labstack
 openstack project delete invisible_to_admin
-
-# allow ssh access to instances deployed with the 'default' security group
-openstack security group rule create default --proto tcp --dst-port 22
 
 # add lxd compatible images to openstack
 echo "Adding LXD compatible images to OpenStack"
