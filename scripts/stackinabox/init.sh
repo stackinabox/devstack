@@ -155,6 +155,9 @@ iface enp0s9 inet manual
         down ip link set $IFACE promisc off
 EOF
 
+sudo ip link set dev enp0s3 mtu $MTU
+sudo ip link set dev enp0s8 mtu $MTU
+
 cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
 chmod 755 /opt/stack/devstack/stack-noscreenrc
 sudo cp /vagrant/scripts/stackinabox/devstack2 /etc/init.d/devstack
@@ -166,6 +169,16 @@ cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
 
 # source openrc for openstack connection variables
 source /home/vagrant/demo-openrc.sh labstack
+echo "recreating router"
+neutron router-gateway-clear router1
+neutron router-interface-delete router1 private-subnet
+neutron router-delete router1
+
+neutron router-create demorouter
+neutron router-gateway-set demorouter public
+neutron router-interface-add demorouter private-subnet
+
+
 # add DNS nameserver entries to "private" subnet in 'demo' tenant
 echo "Updating dns_nameservers on the 'demo' tenant's private subnet"
 neutron subnet-update private-subnet --dns_nameservers list=true 8.8.8.8 8.8.4.4
