@@ -20,6 +20,9 @@ cat > $topDir/vagrant/Personalization <<EOF
 # Amount of RAM (min 4096, recommed 8192) adjust to your machine
 \$memory = 16384
 
+# Which release branch should we build? ( stable/juno | stable/kilo | stable/liberty | master )
+\$release_branch = "stable/mitaka"
+
 # Second Disk (used for lxd backing store)
 \$disk = '$HOME/VirtualBox VMs/stackinabox/box-disk2.vmdk'
 EOF
