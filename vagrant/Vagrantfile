@@ -70,7 +70,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
       vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', $disk]
     end
-    stackinabox.vm.provision :shell, name: "openstack", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
+    stackinabox.vm.provision "openstack", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
+    #Run this after a vagrant reload
+    stackinabox.vm.provision "post-config", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "post-config.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
+
 #    stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
 #    stackinabox.vm.provision :shell, name: "add_docker_heat_plugin", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "heat.sh"), __FILE__)
   end

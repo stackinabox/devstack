@@ -166,39 +166,4 @@ sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
 cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
 cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
-
-# source openrc for openstack connection variables
-source /home/vagrant/demo-openrc.sh labstack
-echo "recreating router"
-neutron router-gateway-clear router1
-neutron router-interface-delete router1 private-subnet
-neutron router-delete router1
-
-neutron router-create demorouter
-neutron router-gateway-set demorouter public
-neutron router-interface-add demorouter private-subnet
-
-
-# add DNS nameserver entries to "private" subnet in 'demo' tenant
-echo "Updating dns_nameservers on the 'demo' tenant's private subnet"
-neutron subnet-update private-subnet --dns_nameservers list=true 8.8.8.8 8.8.4.4
-# allow ssh access to instances deployed with the 'default' security group
-openstack security group rule create default --proto tcp --dst-port 22
-
-# Heat needs to launch instances with a keypair, lets generate a 'default' keypair
-echo "Generating new keypair for the 'demo' tenant in /home/vagrant"
-openstack keypair create demo_key > /tmp/demo_key.priv
-sudo mv /tmp/demo_key.priv /home/vagrant
-sudo chmod 400 /home/vagrant/demo_key.priv
-sudo chown vagrant:vagrant /home/vagrant/demo_key.priv
-
-# source openrc with admin privledges
-source /home/vagrant/admin-openrc.sh labstack
-openstack project delete invisible_to_admin
-
-# add lxd compatible images to openstack
-echo "Adding LXD compatible images to OpenStack"
-
-cd /vagrant/lxc-cloud-images
-chmod 755 import-images.sh
-./import-images.sh
+exit 0
