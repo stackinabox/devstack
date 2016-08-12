@@ -3,7 +3,7 @@
 # set release branch to retrieve from git
 MTU=${2:-1500}
 
-iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
 
 sudo ip link set dev enp0s3 mtu $MTU
 sudo ip link set dev enp0s8 mtu $MTU
