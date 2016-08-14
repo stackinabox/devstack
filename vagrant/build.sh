@@ -27,8 +27,12 @@ cat > $topDir/vagrant/Personalization <<EOF
 \$disk = '$HOME/VirtualBox VMs/stackinabox/box-disk2.vmdk'
 EOF
 cat $topDir/vagrant/Personalization
+echo "Bringing up Vm for Devstack provisioning"
 vagrant up --provision-with "openstack" --provider=virtualbox
+echo "Rebooting..."
 vagrant reload
+echo "wait for OpenStack services in vm to start completely.."
+sleep 60 
+echo "Bringing up Vm for post-provisioning config"
 vagrant provision --provision-with "post-config"
-sleep 60 #wait for OpenStack services in vm to start completely
 popd
