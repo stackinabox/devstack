@@ -11,7 +11,7 @@
 start() {
 
   # allow OpenStack nodes to route packets out to NATed network on HOST
-  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+  iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
 
   # attach stack-volumes
   losetup /dev/loop0 /opt/stack/data/stack-volumes-default-backing-file

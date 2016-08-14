@@ -6,10 +6,10 @@ $use_nfs = false
 $mtu = 1500
 
 # Box name
-$box = "ubuntu/trusty64"
+$box = "bento/ubuntu-16.04"
 
 # Box url
-$box_url = "https://atlas.hashicorp.com/ubuntu/boxes/trusty64"
+$box_url = "https://atlas.hashicorp.com/bento/boxes/ubuntu-16.04"
 
 # Number of CPU's (min 2, recommend 4) adjust to your machine
 $cpus = 4
@@ -18,4 +18,6 @@ $cpus = 4
 $memory = 8192
 
 # Which release branch should we build? ( stable/juno | stable/kilo | stable/liberty | master )
-$release_branch = "stable/liberty"
+$release_branch = "stable/mitaka"
+#Set to where second disk should be created
+$disk = "/home/freddy/VirtualBox VMs/stackinabox/box-disk2.vmdk"
