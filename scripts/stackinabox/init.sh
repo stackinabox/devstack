@@ -19,34 +19,22 @@ export DEBIAN_FRONTEND=noninteractive
 echo export LC_ALL=en_US.UTF-8 >> ~/.bash_profile
 echo export LANG=en_US.UTF-8 >> ~/.bash_profile
 
-# Don't automatically install recommended or suggested packages
-sudo mkdir -p /etc/apt/apt.config.d
-sudo echo 'APT::Install-Recommends "0";' | sudo tee --append /etc/apt/apt.config.d/99local > /dev/null
-sudo echo 'APT::Install-Suggests "0";' | sudo tee --append /etc/apt/apt.config.d/99local > /dev/null
+echo Updating...
+sudo apt-get -y update
+sudo apt-get install -y zfsutils-linux git
 
-# Add software repository
-which add-apt-repository || (sudo apt-get -qqy update ; sudo apt-get -qqy install software-properties-common)
-#sudo add-apt-repository ppa:ubuntu-cloud-archive/liberty-staging
-sudo add-apt-repository cloud-archive:liberty
-# sudo add-apt-repository ppa:ubuntu-lxc/stable
-# sudo add-apt-repository ppa:ubuntu-lxc/lxcfs-stable
-# sudo add-apt-repository ppa:ubuntu-lxc/cgmanager-stable
-# sudo add-apt-repository ppa:ubuntu-lxc/lxd-stable
-# comment above ppa and uncomment below to get development lxd builds
-sudo add-apt-repository ppa:ubuntu-lxc/lxd-git-master
-sudo apt-get -qqy update
-sudo apt-get -qqy install python-pip python-dev git libvirt-bin #cgroup-lite cgmanager libpam-cgm
+echo Creating ZFS for lxd
+sudo zpool create -m /lxd -f lxd sdb
+sudo apt-get install -y lxd
+sudo lxd init --auto --storage-backend zfs --storage-pool lxd
+
+sudo apt-get install -y python-pip
+sudo pip install -U os-testr
 sudo pip install -U pbr
-sudo pip install -U pip
-#sudo pip install -U requests==2.5.3
-sudo pip install -U requests==2.8.1
+sudo apt-get install python-setuptools
+sudo easy_install pip
 
-# for barbican support
-sudo pip install 'uwsgi'
-sudo chmod +x /usr/local/bin/uwsgi
-
-sudo update-alternatives --install /bin/sh sh /bin/bash 100
-
+echo configuring swap...
 # We need swap space to do any sort of scale testing with the Vagrant config.
 # Without this, we quickly run out of RAM and the kernel starts whacking things.
 sudo rm -f /swapfile
@@ -61,6 +49,7 @@ sudo echo "/swapfile   none    swap    sw    0   0" | sudo tee --append /etc/fst
 # Disable firewall (this is not production)
 sudo ufw disable
 
+echo Configuring networking....
 # To permit IP packets pass through different networks,
 # the network card should be configured with routing capability.
 sudo echo "net.ipv4.ip_forward = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
@@ -72,7 +61,7 @@ sudo echo "net.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.co
 sudo sysctl -p
 
 # allow OpenStack nodes to route packets out through NATed network on HOST (this is the vagrant managed nic)
-sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
 
 # Update host configuration
 sudo bash -c "echo 'openstack' > /etc/hostname"
@@ -92,25 +81,22 @@ reboot 0;
 select-timeout 0;
 initial-interval 1;
 backoff-cutoff 2;
-link-timeout 10;
-interface "eth0"
+interface "enp0s3"
 {
-  #supersede host-name "openstack";
-  #supersede domain-name "stackinabox.io";
   prepend domain-name-servers 192.168.27.1, 8.8.8.8, 8.8.4.4;
-  request subnet-mask, 
-          broadcast-address, 
-          time-offset, 
+  request subnet-mask,
+          broadcast-address,
+          time-offset,
           routers,
-          domain-name, 
-          domain-name-servers, 
+          domain-name,
+          domain-name-servers,
           host-name,
-          netbios-name-servers, 
+          netbios-name-servers,
           netbios-scope;
 }
 EOF
 
-# enable cgroup memory limits
+echo enable cgroup memory limits
 sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="cgroup_enable=memory swapaccount=1 /g' /etc/default/grub
 sudo sed -i 's/GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1 /g' /etc/default/grub
 sudo update-grub
@@ -120,135 +106,64 @@ echo "Cloning DevStack repo from branch \"${RELEASE_BRANCH}\""
 sudo mkdir -p /opt/stack
 sudo chown -R vagrant:vagrant /opt/stack
 git clone https://git.openstack.org/openstack-dev/devstack.git /opt/stack/devstack -b "${RELEASE_BRANCH}"
-
+#need to do below to stop devstack failing on test-requirements for lxd
+echo "Cloning nova-lxd repo from branch \"${RELEASE_BRANCH}\""
+git clone https://github.com/openstack/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
+rm -f /opt/stack/nova-lxd/test-requirements.txt
 # add local.conf to /opt/devstack folder
 cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
 
-# update RELEASE_BRANCH variable in local.conf to match existing 
+# update RELEASE_BRANCH variable in local.conf to match existing
 # (use '@' as delim in sed b/c $RELEASE_BRANCH may contain '/')
 sed -i "s@RELEASE_BRANCH=@RELEASE_BRANCH=$RELEASE_BRANCH@" /opt/stack/devstack/local.conf
 
 # don't assign IP to eth2 yet
-sudo ifconfig eth2 0.0.0.0
-sudo ifconfig eth2 promisc
-sudo ip link set dev eth2 up
-
+sudo ifconfig enp0s9 0.0.0.0
+sudo ifconfig enp0s9 promisc
+sudo ip link set dev enp0s9 up
 # gentelmen start your engines
 echo "Installing DevStack"
 cd /opt/stack/devstack
 ./stack.sh
-echo "Finished installing DevStack"
+if [ $? -eq 0 ]
+then
+ echo "Finished installing DevStack"
+else
+  echo "Error installing DevStack"
+  exit $?
+fi
 
 # bridge eth2 to ovs for our public network
-sudo ovs-vsctl add-port br-ex eth2
+sudo ovs-vsctl add-port br-ex enp0s9
 sudo ifconfig br-ex promisc up
 
 # assign ip from public network to bridge (br-ex)
 sudo bash -c 'cat >> /etc/network/interfaces' <<'EOF'
-
-auto eth2
-iface eth2 inet manual
+auto enp0s9
+iface enp0s9 inet manual
     address 0.0.0.0
     up ifconfig $IFACE 0.0.0.0 up
     up ip link set $IFACE promisc on
     down ip link set $IFACE promisc off
     down ifconfig $IFACE down
 
-auto br-ex
-iface br-ex inet static
-    address 172.24.4.2
-    netmask 255.255.255.0
-    up ip link set $IFACE promisc on
-    down ip link set $IFACE promisc off
+    auto br-ex
+    iface br-ex inet static
+        address 172.24.4.2
+        netmask 255.255.255.0
+        up ip link set $IFACE promisc on
+        down ip link set $IFACE promisc off
 EOF
 
-# Install NTP
-# disabling b/c slow seed times at system startup are causing problems
-#sudo apt-get install -qqy ntp
+sudo ip link set dev enp0s3 mtu $MTU
+sudo ip link set dev enp0s8 mtu $MTU
 
-# Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
-# the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
-sudo ip link set dev eth1 mtu $MTU
-sudo ip link set dev eth2 mtu $MTU
-
-# Restart networking
-sudo /etc/init.d/networking restart
-
-# source openrc for openstack connection variables
-source /opt/stack/devstack/openrc demo demo
-
-# add DNS nameserver entries to "private" subnet in 'demo' tenant
-echo "Updating dns_nameservers on the 'demo' tenant's private subnet"
-neutron subnet-update private-subnet --dns_nameservers list=true 8.8.8.8 8.8.4.4
-
-# Heat needs to launch instances with a keypair, lets generate a 'default' keypair
-echo "Generating new keypair for the 'demo' tenant in /home/vagrant"
-nova keypair-add demo_key > ~/demo_key.priv
-chmod 400 ~/demo_key.priv
-
-# source openrc with admin privledges
-source /opt/stack/devstack/openrc admin admin
-
-# allow ssh access to instances deployed with the 'default' security group
-nova secgroup-add-group-rule default default tcp 22 22
-
-# delete the invisible_to_admin tenant (not needed)
-keystone tenant-delete invisible_to_admin
-
-# add lxd compatible images to openstack
-echo "Adding LXD compatible images to OpenStack"
-
-mkdir -p /vagrant/images
-cd /vagrant/images
-#rm -rf ./*
-
-#wget -nv https://github.com/tpouyer/lxc-cloud-images/releases/download/stable%2Fliberty/lxc-cloud-images.tar.xz
-#tar -xf lxc-cloud-images.tar.xz
-
-chmod 755 import-images.sh
-./import-images.sh
-
-# give vagrant user lxd permissions
-sudo chown -R lxd:lxd /var/lib/lxd
-sudo chmod -R go+rwxt /var/lib/lxd
-sudo usermod -a -G lxd vagrant
-newgrp lxd
-
-# add devstack to init.d so it will automatically start/stop with the machine
 cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
 chmod 755 /opt/stack/devstack/stack-noscreenrc
 sudo cp /vagrant/scripts/stackinabox/devstack2 /etc/init.d/devstack
 sudo chmod +x /etc/init.d/devstack
 sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
-# install 'shellinabox' to make using this image on windows easier
-#shellinabox will be available at http://192.168.27.100:4200
-sudo apt-get install -y shellinabox
-sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
-sudo /etc/init.d/shellinabox restart
-
-# install java (for use with udclient)
-wget http://artifacts.stackinabox.io/ibm/java-jre/latest.txt
-ARTIFACT_VERSION=$(cat latest.txt)
-ARTIFACT_DOWNLOAD_URL=http://artifacts.stackinabox.io/ibm/java-jre/$ARTIFACT_VERSION/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
-
-sudo mkdir -p /opt/java
-sudo wget $ARTIFACT_DOWNLOAD_URL
-sudo tar -zxf ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz -C /opt/java/
-sudo touch /etc/profile.d/java_home.sh
-sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
-export JAVA_HOME=/opt/java/ibm-java-x86_64-71/jre
-export PATH=$JAVA_HOME/bin:$PATH
-EOF
-sudo chmod 755 /etc/profile.d/java_home.sh
-
-sudo btrfs quota enable /var/lib/lxd
-
-# wait for openstack to startup
-sleep 60
-
-# clean up after ourselves
-/vagrant/scripts/minimize/clean.sh 
-
-# restart
-#sudo shutdown -P now
+cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
+cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
+exit 0
