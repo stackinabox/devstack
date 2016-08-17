@@ -75,6 +75,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     stackinabox.vm.provision "post-config", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "post-config.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
 
 #    stackinabox.vm.provision "file", source: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "openrc"), __FILE__), destination: "/home/vagrant/openrc"
-#    stackinabox.vm.provision :shell, name: "add_docker_heat_plugin", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "heat.sh"), __FILE__)
+    stackinabox.vm.provision "docker-heat", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "docker", "heat.sh"), __FILE__), args: "#{$release_branch}"
   end
 end

@@ -23,8 +23,15 @@ echo Updating...
 sudo apt-get -y update
 sudo apt-get install -y zfsutils-linux git
 
-echo Creating ZFS for lxd
-sudo zpool create -m /lxd -f lxd sdb
+echo "Creating ZFS for lxd"
+sudo zpool create -m /var/lib/lxd -f lxd sdb
+sudo zpool set feature@lz4_compress=enabled lxd
+sudo zfs set compression=lz4 lxd
+sudo touch /etc/init/zpool-import.conf
+sudo sed -i 's/modprobe zfs zfs_autoimport_disable=1/modprobe zfs zfs_autoimport_disable=0/g' /etc/init/zpool-import.conf
+sudo sed -i 's/# By default this script does nothing./zfs mount -a/g' /etc/rc.local
+
+echo "Install LXD and initialize with ZFS storage-pool 'lxd' for backend"
 sudo apt-get install -y lxd
 sudo lxd init --auto --storage-backend zfs --storage-pool lxd
 
@@ -83,7 +90,7 @@ initial-interval 1;
 backoff-cutoff 2;
 interface "enp0s3"
 {
-  prepend domain-name-servers 192.168.27.1, 8.8.8.8, 8.8.4.4;
+  prepend domain-name-servers 192.168.27.100, 8.8.8.8, 8.8.4.4;
   request subnet-mask,
           broadcast-address,
           time-offset,
@@ -108,7 +115,7 @@ sudo chown -R vagrant:vagrant /opt/stack
 git clone https://git.openstack.org/openstack-dev/devstack.git /opt/stack/devstack -b "${RELEASE_BRANCH}"
 #need to do below to stop devstack failing on test-requirements for lxd
 echo "Cloning nova-lxd repo from branch \"${RELEASE_BRANCH}\""
-git clone https://github.com/openstack/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
+git clone https://github.com/stackinabox/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
 rm -f /opt/stack/nova-lxd/test-requirements.txt
 # add local.conf to /opt/devstack folder
 cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
@@ -121,6 +128,7 @@ sed -i "s@RELEASE_BRANCH=@RELEASE_BRANCH=$RELEASE_BRANCH@" /opt/stack/devstack/l
 sudo ifconfig enp0s9 0.0.0.0
 sudo ifconfig enp0s9 promisc
 sudo ip link set dev enp0s9 up
+sudo ip link set dev enp0s9 mtu 1450
 # gentelmen start your engines
 echo "Installing DevStack"
 cd /opt/stack/devstack
@@ -142,6 +150,7 @@ sudo bash -c 'cat >> /etc/network/interfaces' <<'EOF'
 auto enp0s9
 iface enp0s9 inet manual
     address 0.0.0.0
+    mtu 1450
     up ifconfig $IFACE 0.0.0.0 up
     up ip link set $IFACE promisc on
     down ip link set $IFACE promisc off
@@ -160,7 +169,7 @@ sudo ip link set dev enp0s8 mtu $MTU
 
 cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
 chmod 755 /opt/stack/devstack/stack-noscreenrc
-sudo cp /vagrant/scripts/stackinabox/devstack2 /etc/init.d/devstack
+sudo cp /vagrant/scripts/stackinabox/devstack /etc/init.d/devstack
 sudo chmod +x /etc/init.d/devstack
 sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 

@@ -11,13 +11,17 @@
 start() {
 
   # allow OpenStack nodes to route packets out to NATed network on HOST
-  iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+  iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
+
+  # set floating ip network (external network) to mtu of 1450
+  ip link set dev enp0s9 mtu 1450
 
   # attach stack-volumes
-  losetup /dev/loop0 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file
+  losetup /dev/loop0 /opt/stack/data/stack-volumes-default-backing-file
+  losetup /dev/loop1 /opt/stack/data/stack-volumes-lvmdriver-1-backing-file
 
   echo 'Starting DevStack' >&2
-  su -c "screen -dm -c /opt/stack/devstack/stack-screenrc" -s /bin/sh vagrant
+  su -c "/opt/stack/devstack/stack-noscreenrc" -s /bin/sh vagrant
   echo 'DevStack started' >&2
 }
 

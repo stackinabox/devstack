@@ -47,3 +47,13 @@
 /usr/local/bin/heat-api-cfn --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cfn.log 2>&1 &
 
 /usr/local/bin/heat-api-cloudwatch --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cw.log 2>&1 &
+
+# /usr/local/bin/designate-central --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-central.log 2>&1 &
+
+# /usr/local/bin/designate-api --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-api.log 2>&1 &
+
+#/usr/local/bin/designate-manage pool-manager-cache sync >> /opt/stack/logs/designate-sync-pool-manager-cache.log 2>&1 &
+
+# /usr/local/bin/designate-pool-manager --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-pool-manager.log 2>&1 &
+
+# /usr/local/bin/designate-mdns --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-mdns.log 2>&1 &

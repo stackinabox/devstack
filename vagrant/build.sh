@@ -6,7 +6,7 @@ pushd $topDir/vagrant
 touch $topDir/vagrant/Personalization
 cat > $topDir/vagrant/Personalization <<EOF
 # Use NFS? (won't work on windows)
-\$use_nfs = false
+\$use_nfs = true
 
 # Box name
 \$box = "bento/ubuntu-16.04"
@@ -15,16 +15,16 @@ cat > $topDir/vagrant/Personalization <<EOF
 \$box_url = "https://atlas.hashicorp.com/bento/boxes/ubuntu-16.04"
 
 # Number of CPU's (min 2, recommend 4) adjust to your machine
-\$cpus = 8
+\$cpus = 4
 
 # Amount of RAM (min 4096, recommed 8192) adjust to your machine
-\$memory = 16384
+\$memory = 8192
 
 # Which release branch should we build? ( stable/juno | stable/kilo | stable/liberty | master )
 \$release_branch = "stable/mitaka"
 
 # Second Disk (used for lxd backing store)
-\$disk = '$HOME/VirtualBox VMs/stackinabox/box-disk2.vmdk'
+\$disk = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk2.vmdk'
 EOF
 cat $topDir/vagrant/Personalization
 echo "Bringing up Vm for Devstack provisioning"
@@ -35,4 +35,9 @@ echo "wait for OpenStack services in vm to start completely.."
 sleep 60 
 echo "Bringing up Vm for post-provisioning config"
 vagrant provision --provision-with "post-config"
+sleep 60
+echo "Adding Docker HEAT Plugins to heat engine"
+vagrant provision --provision-with "docker-heat"
+echo "Rebooting..."
+vagrant reload
 popd

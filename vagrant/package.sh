@@ -6,8 +6,8 @@ pushd $topDir/vagrant
 vagrant halt ## make sure vagrant vm is no longer running
 
 # create/clean build dir
-mkdir -p $topDir/build
-rm -f $topDir/build/*
+mkdir -p $topDir/builds
+rm -f $topDir/builds/*
 
 # defragment disks
 #$topDir/scripts/minimize/vmware-vdiskmanager -d $HOME/VirtualBox\ VMs/stackinabox/box-disk1.vmdk
