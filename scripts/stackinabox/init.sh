@@ -35,6 +35,10 @@ echo "Install LXD and initialize with ZFS storage-pool 'lxd' for backend"
 sudo apt-get install -y lxd
 sudo lxd init --auto --storage-backend zfs --storage-pool lxd
 
+# flip the module parameters to enable user namespace mounts for fuse and/or ext4 within lxd containers
+echo Y | sudo tee /sys/module/fuse/parameters/userns_mounts
+echo Y | sudo tee /sys/module/ext4/parameters/userns_mounts
+
 sudo apt-get install -y python-pip
 sudo pip install -U os-testr
 sudo pip install -U pbr
@@ -90,7 +94,7 @@ initial-interval 1;
 backoff-cutoff 2;
 interface "enp0s3"
 {
-  prepend domain-name-servers 192.168.27.100, 8.8.8.8, 8.8.4.4;
+  prepend domain-name-servers 8.8.8.8, 8.8.4.4;
   request subnet-mask,
           broadcast-address,
           time-offset,
@@ -175,4 +179,5 @@ sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
 cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
 cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
+cp /vagrant/scripts/stackinabox/openrc /home/vagrant
 exit 0
