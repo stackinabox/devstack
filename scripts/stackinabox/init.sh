@@ -177,6 +177,78 @@ sudo cp /vagrant/scripts/stackinabox/devstack /etc/init.d/devstack
 sudo chmod +x /etc/init.d/devstack
 sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
+# Script only works if sudo caches the password for a few minutes
+sudo true
+
+# Install kernel extra's to enable docker aufs support
+sudo apt-get -y install linux-image-extra-$(uname -r)
+
+# install docker
+wget -qO- https://get.docker.com/ | sh
+
+# Install docker-compose
+COMPOSE_VERSION=`git ls-remote https://github.com/docker/compose | grep refs/tags | grep -oP "[0-9]+\.[0-9]+\.[0-9]+$" | tail -n 1`
+sudo sh -c "curl -L https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose"
+sudo chmod +x /usr/local/bin/docker-compose
+sudo sh -c "curl -L https://raw.githubusercontent.com/docker/compose/${COMPOSE_VERSION}/contrib/completion/bash/docker-compose > /etc/bash_completion.d/docker-compose"
+
+# Install docker-cleanup command
+sudo cp /vagrant/scripts/docker/docker-cleanup.sh /usr/local/bin/docker-cleanup
+sudo chmod +x /usr/local/bin/docker-cleanup
+
+# add vagrant user to docker group
+sudo usermod -aG docker vagrant
+
+# install kuryr
+# sudo git clone https://git.openstack.org/openstack/kuryr.git /opt/stack/kuryr
+# cd /opt/stack/kuryr
+# sudo pip install -r requirements.txt
+
+# # install kuryr-libnetwork driver
+# sudo git clone https://git.openstack.org/openstack/kuryr-libnetwork /opt/stack/kuryr-libnetwork
+# cd /opt/stack/kuryr-libnetwork
+# sudo pip install -r requirements.txt
+# sudo pip install .
+
+# # configure kuryr
+# cd /opt/stack/kuryr-libnetwork
+# sudo pip install -U tox
+# cd /opt/stack/kuryr
+# sudo tox -e genconfig
+# sudo mkdir -p /etc/kuryr
+# sudo cp etc/kuryr.conf.sample /etc/kuryr/kuryr.conf
+# sudo sed -i 's|#bindir = /usr/libexec/kuryr|bindir = /usr/local/libexec/kuryr|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#auth_uri = http://127.0.0.1:35357/v2.0|auth_uri = http://127.0.0.1:35357/v2.0|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#admin_user = <None>|admin_user = admin|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#admin_password = <None>|admin_password = labstack|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#admin_tenant_name = <None>|admin_tenant_name = admin|g' /etc/kuryr/kuryr.conf
+# cd /opt/kuryr-libnetwork
+# sudo pip install -U flask
+# sudo /opt/stack/kuryr-libnetwork/scripts/run_kuryr.sh >> /opt/stack/logs/kuryr-libnetwork.log 2>&1 &
+
+# install 'shellinabox' to make using this image on windows easier
+#shellinabox will be available at http://192.168.27.100:4200
+sudo apt-get install -y shellinabox
+sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
+sudo /etc/init.d/shellinabox restart
+
+# install java (for use with udclient)
+cd /tmp
+wget http://artifacts.stackinabox.io/ibm/java-jre/latest.txt
+ARTIFACT_VERSION=$(cat latest.txt)
+ARTIFACT_DOWNLOAD_URL=http://artifacts.stackinabox.io/ibm/java-jre/$ARTIFACT_VERSION/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+
+sudo mkdir -p /opt/java
+sudo wget $ARTIFACT_DOWNLOAD_URL
+sudo tar -zxf ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz -C /opt/java/
+sudo touch /etc/profile.d/java_home.sh
+sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
+export JAVA_HOME=/opt/java/ibm-java-x86_64-71/jre
+export PATH=$JAVA_HOME/bin:$PATH
+EOF
+sudo chmod 755 /etc/profile.d/java_home.sh
+sudo rm -f /tmp/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+
 cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
 cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
 cp /vagrant/scripts/stackinabox/openrc /home/vagrant

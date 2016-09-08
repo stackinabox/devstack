@@ -57,3 +57,6 @@
 # /usr/local/bin/designate-pool-manager --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-pool-manager.log 2>&1 &
 
 # /usr/local/bin/designate-mdns --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-mdns.log 2>&1 &
+
+# cd /opt/stack/kuryr-libnetwork
+# ./scripts/run_kuryr.sh >> /opt/stack/logs/kuryr-libnetwork.log 2>&1 &
