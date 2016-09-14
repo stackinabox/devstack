@@ -1,3 +1,4 @@
+
 # Use NFS? (won't work on windows)
 $use_nfs = false
 
@@ -19,5 +20,9 @@ $memory = 8192
 
 # Which release branch should we build? ( stable/juno | stable/kilo | stable/liberty | master )
 $release_branch = "stable/mitaka"
-#Set to where second disk should be created
-$disk = "/home/freddy/VirtualBox VMs/stackinabox/box-disk2.vmdk"
+
+# Second Disk (used for lxd backing store)
+$disk = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk2.vmdk'
+
+# Third Disk (used for local docker image storage)
+$disk_docker = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk3.vmdk'

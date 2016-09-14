@@ -16,17 +16,47 @@ echo ""
 # Disable interactive options when installing with apt-get
 export DEBIAN_FRONTEND=noninteractive
 
-echo export LC_ALL=en_US.UTF-8 >> ~/.bash_profile
-echo export LANG=en_US.UTF-8 >> ~/.bash_profile
+echo export LC_ALL=C.UTF-8 >> ~/.bash_profile
+echo export LANG=C.UTF-8 >> ~/.bash_profile
+
+sudo bash -c 'cat > /etc/apt/apt.conf.d/01lean' <<'EOF'
+APT::Install-Suggests "0";
+APT::Install-Recommends "0";
+APT::AutoRemove::SuggestsImportant "false";
+APT::AutoRemove::RecommendsImportant "false";
+EOF
 
 echo Updating...
-sudo apt-get -y update
-sudo apt-get install -y zfsutils-linux git
+sudo apt-get -qqy update
+sudo apt-get install -qqy linux-headers-$(uname -r) \
+  linux-headers-generic \
+  linux-image-extra-$(uname -r) \
+  linux-image-extra-virtual
 
-echo Creating ZFS for lxd
-sudo zpool create -m /lxd -f lxd sdb
-sudo apt-get install -y lxd
+sudo apt-get -y update
+sudo apt-get -qqy install zfsutils-linux git
+
+echo "Creating ZFS for lxd"
+sudo zpool create -m /var/lib/lxd -f lxd sdb
+sudo zpool set feature@lz4_compress=enabled lxd
+sudo zfs set compression=lz4 lxd
+sudo touch /etc/init/zpool-import.conf
+sudo sed -i 's/modprobe zfs zfs_autoimport_disable=1/modprobe zfs zfs_autoimport_disable=0/g' /etc/init/zpool-import.conf
+sudo sed -i 's/# By default this script does nothing./zfs mount -a/g' /etc/rc.local
+
+echo "Creating ZFS for docker"
+sudo zpool create -m /var/lib/docker -f docker sdc
+sudo zpool set feature@lz4_compress=enabled docker
+sudo zfs set compression=lz4 docker
+sudo touch /etc/init/zpool-import.conf
+
+echo "Install LXD and initialize with ZFS storage-pool 'lxd' for backend"
+sudo apt-get install -y lxd lxd-client
 sudo lxd init --auto --storage-backend zfs --storage-pool lxd
+
+# flip the module parameters to enable user namespace mounts for fuse and/or ext4 within lxd containers
+echo Y | sudo tee /sys/module/fuse/parameters/userns_mounts
+echo Y | sudo tee /sys/module/ext4/parameters/userns_mounts
 
 sudo apt-get install -y python-pip
 sudo pip install -U os-testr
@@ -73,28 +103,28 @@ EOF
 
 sudo hostname openstack
 
-# speed up DNS resolution
-sudo bash -c 'cat > /etc/dhcp/dhclient.conf' <<EOF
-timeout 30;
-retry 10;
-reboot 0;
-select-timeout 0;
-initial-interval 1;
-backoff-cutoff 2;
-interface "enp0s3"
-{
-  prepend domain-name-servers 192.168.27.1, 8.8.8.8, 8.8.4.4;
-  request subnet-mask,
-          broadcast-address,
-          time-offset,
-          routers,
-          domain-name,
-          domain-name-servers,
-          host-name,
-          netbios-name-servers,
-          netbios-scope;
-}
-EOF
+# # speed up DNS resolution
+# sudo bash -c 'cat > /etc/dhcp/dhclient.conf' <<EOF
+# timeout 30;
+# retry 10;
+# reboot 0;
+# select-timeout 0;
+# initial-interval 1;
+# backoff-cutoff 2;
+# interface "enp0s3"
+# {
+#   prepend domain-name-servers 8.8.8.8, 8.8.4.4;
+#   request subnet-mask,
+#           broadcast-address,
+#           time-offset,
+#           routers,
+#           domain-name,
+#           domain-name-servers,
+#           host-name,
+#           netbios-name-servers,
+#           netbios-scope;
+# }
+# EOF
 
 echo enable cgroup memory limits
 sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="cgroup_enable=memory swapaccount=1 /g' /etc/default/grub
@@ -108,7 +138,7 @@ sudo chown -R vagrant:vagrant /opt/stack
 git clone https://git.openstack.org/openstack-dev/devstack.git /opt/stack/devstack -b "${RELEASE_BRANCH}"
 #need to do below to stop devstack failing on test-requirements for lxd
 echo "Cloning nova-lxd repo from branch \"${RELEASE_BRANCH}\""
-git clone https://github.com/openstack/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
+git clone https://github.com/stackinabox/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
 rm -f /opt/stack/nova-lxd/test-requirements.txt
 # add local.conf to /opt/devstack folder
 cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
@@ -121,6 +151,7 @@ sed -i "s@RELEASE_BRANCH=@RELEASE_BRANCH=$RELEASE_BRANCH@" /opt/stack/devstack/l
 sudo ifconfig enp0s9 0.0.0.0
 sudo ifconfig enp0s9 promisc
 sudo ip link set dev enp0s9 up
+sudo ip link set dev enp0s9 mtu 1450
 # gentelmen start your engines
 echo "Installing DevStack"
 cd /opt/stack/devstack
@@ -142,6 +173,7 @@ sudo bash -c 'cat >> /etc/network/interfaces' <<'EOF'
 auto enp0s9
 iface enp0s9 inet manual
     address 0.0.0.0
+    mtu 1450
     up ifconfig $IFACE 0.0.0.0 up
     up ip link set $IFACE promisc on
     down ip link set $IFACE promisc off
@@ -160,10 +192,136 @@ sudo ip link set dev enp0s8 mtu $MTU
 
 cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
 chmod 755 /opt/stack/devstack/stack-noscreenrc
-sudo cp /vagrant/scripts/stackinabox/devstack2 /etc/init.d/devstack
+sudo cp /vagrant/scripts/stackinabox/devstack /etc/init.d/devstack
 sudo chmod +x /etc/init.d/devstack
 sudo update-rc.d devstack start 98 2 3 4 5 . stop 02 0 1 6 .
 
+# Script only works if sudo caches the password for a few minutes
+sudo true
+
+# install docker
+sudo apt-get update
+sudo apt-get install -qqy apt-transport-https ca-certificates
+sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+
+sudo touch /etc/apt/sources.list.d/docker.list
+sudo bash -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-xenial main" > /etc/apt/sources.list.d/docker.list'
+
+sudo apt-get update
+sudo apt-get purge lxc-docker
+
+sudo apt-get update
+sudo apt-get install -qqy docker-engine
+
+# Install docker-compose
+COMPOSE_VERSION=`git ls-remote https://github.com/docker/compose | grep refs/tags | grep -oP "[0-9]+\.[0-9]+\.[0-9]+$" | tail -n 1`
+sudo sh -c "curl -L https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose"
+sudo chmod +x /usr/local/bin/docker-compose
+sudo sh -c "curl -L https://raw.githubusercontent.com/docker/compose/${COMPOSE_VERSION}/contrib/completion/bash/docker-compose > /etc/bash_completion.d/docker-compose"
+
+# Install docker-cleanup command
+sudo cp /vagrant/scripts/docker/docker-cleanup.sh /usr/local/bin/docker-cleanup
+sudo chmod +x /usr/local/bin/docker-cleanup
+
+# add vagrant user to docker group
+sudo usermod -aG docker vagrant
+newgrp docker
+
+# have docker listen on a port instead of a unix socket for remote administration
+sudo bash -c 'cat > /etc/systemd/system/docker.socket' <<'EOF'
+[Socket]
+ListenStream=0.0.0.0:2375
+EOF
+
+sudo mkdir -p /etc/systemd/system/docker.service.d
+
+# have docker utilze lxc to launch containers
+sudo bash -c 'cat > /etc/systemd/system/docker.service.d/lxc.conf' <<'EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H fd:// --ip 192.168.27.100 -b lxdbr0
+EOF
+
+# Docker enables IP forwarding by itself, but by default systemd overrides 
+# the respective sysctl setting. The following disables this override (for all interfaces): 
+sudo bash -c 'cat > /etc/systemd/network/ipforward.network' <<'EOF'
+[Network]
+IPForward=ipv4
+EOF
+
+sudo bash -c 'cat > /etc/sysctl.d/99-docker.conf' <<'EOF'
+net.ipv4.ip_forward = 1
+EOF
+
+sudo sysctl -w net.ipv4.ip_forward=1
+
+# adjust the number of processes allowed by systemd
+sudo bash -c 'cat > /etc/systemd/system/docker.service.d/tasks.conf' <<'EOF'
+[Service]
+TasksMax=infinity
+EOF
+
+sudo bash -c 'cat >> /home/vagrant/.bash_profile' <<'EOF'
+export DOCKER_HOST=192.168.27.100
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl restart systemd-networkd
+sudo systemctl restart docker.service
+
+# sysctl -w net.ipv4.ip_forward=1
+
+# install kuryr
+# sudo git clone https://git.openstack.org/openstack/kuryr.git /opt/stack/kuryr
+# cd /opt/stack/kuryr
+# sudo pip install -r requirements.txt
+
+# # install kuryr-libnetwork driver
+# sudo git clone https://git.openstack.org/openstack/kuryr-libnetwork /opt/stack/kuryr-libnetwork
+# cd /opt/stack/kuryr-libnetwork
+# sudo pip install -r requirements.txt
+# sudo pip install .
+
+# # configure kuryr
+# cd /opt/stack/kuryr-libnetwork
+# sudo pip install -U tox
+# cd /opt/stack/kuryr
+# sudo tox -e genconfig
+# sudo mkdir -p /etc/kuryr
+# sudo cp etc/kuryr.conf.sample /etc/kuryr/kuryr.conf
+# sudo sed -i 's|#bindir = /usr/libexec/kuryr|bindir = /usr/local/libexec/kuryr|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#auth_uri = http://127.0.0.1:35357/v2.0|auth_uri = http://127.0.0.1:35357/v2.0|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#admin_user = <None>|admin_user = admin|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#admin_password = <None>|admin_password = labstack|g' /etc/kuryr/kuryr.conf
+# sudo set -i 's|#admin_tenant_name = <None>|admin_tenant_name = admin|g' /etc/kuryr/kuryr.conf
+# cd /opt/kuryr-libnetwork
+# sudo pip install -U flask
+# sudo /opt/stack/kuryr-libnetwork/scripts/run_kuryr.sh >> /opt/stack/logs/kuryr-libnetwork.log 2>&1 &
+
+# install 'shellinabox' to make using this image on windows easier
+#shellinabox will be available at http://192.168.27.100:4200
+sudo apt-get install -y shellinabox
+sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
+sudo /etc/init.d/shellinabox restart
+
+# install java (for use with udclient)
+cd /tmp
+wget http://artifacts.stackinabox.io/ibm/java-jre/latest.txt
+ARTIFACT_VERSION=$(cat latest.txt)
+ARTIFACT_DOWNLOAD_URL=http://artifacts.stackinabox.io/ibm/java-jre/$ARTIFACT_VERSION/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+
+sudo mkdir -p /opt/java
+sudo wget $ARTIFACT_DOWNLOAD_URL
+sudo tar -zxf ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz -C /opt/java/
+sudo touch /etc/profile.d/java_home.sh
+sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
+export JAVA_HOME=/opt/java/ibm-java-x86_64-71/jre
+export PATH=$JAVA_HOME/bin:$PATH
+EOF
+sudo chmod 755 /etc/profile.d/java_home.sh
+sudo rm -f /tmp/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+
 cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
 cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant
+cp /vagrant/scripts/stackinabox/openrc /home/vagrant
 exit 0

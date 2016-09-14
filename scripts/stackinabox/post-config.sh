@@ -7,6 +7,7 @@ sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
 
 sudo ip link set dev enp0s3 mtu $MTU
 sudo ip link set dev enp0s8 mtu $MTU
+sudo ip link set dev enp0s9 mtu 1450
 
 source /home/vagrant/demo-openrc.sh labstack
 echo "recreating router"
