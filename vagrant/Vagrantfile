@@ -1,8 +1,8 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-ENV["LC_ALL"] = "en_US.UTF-8"
-ENV["LANG"] = "en_US.UTF-8"
+ENV["LC_ALL"] = "C.UTF-8"
+ENV["LANG"] = "C.UTF-8"
 
 vagrant_dir = File.expand_path(File.dirname(__FILE__))
 personalization = File.expand_path(File.join(vagrant_dir, "Personalization"), __FILE__)
@@ -65,12 +65,23 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 10000]
 
       if !File.exists?($disk)
-        print $disk
         vb.customize ['createhd', '--filename', $disk, '--size', 500 * 1024]
       end
+
+      # add disk for lxd image storage & execution
       vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 1, '--device', 0, '--type', 'hdd', '--medium', $disk]
+
+      if !File.exists?($disk_docker)
+        vb.customize ['createhd', '--filename', $disk_docker, '--size', 500 * 1024]
+      end
+
+      # add disk for docker image storage and execution
+      vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', $disk_docker]
     end
+
+    # run stackinabox initialization scripts
     stackinabox.vm.provision "openstack", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
+
     #Run this after a vagrant reload
     stackinabox.vm.provision "post-config", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "post-config.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
 

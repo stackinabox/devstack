@@ -1,27 +1,3 @@
-# Use NFS? (won't work on windows)
-$use_nfs = false
-
-# Configure MTU on VM interfaces. Also requires manually configuring the same MTU on
-# the equivalent 'vboxnet' interfaces on the host. i.e. sudo ip link set dev vboxnet0 mtu $MTU
-$mtu = 1500
-
-# Box name
-$box = "bento/ubuntu-16.04"
-
-# Box url
-$box_url = "https://atlas.hashicorp.com/bento/boxes/ubuntu-16.04"
-
-# Number of CPU's (min 2, recommend 4) adjust to your machine
-$cpus = 4
-
-# Amount of RAM (min 4096, recommed 8192) adjust to your machine
-$memory = 8192
-
-# Which release branch should we build? ( stable/juno | stable/kilo | stable/liberty | master )
-$release_branch = "stable/mitaka"
-#Set to where second disk should be created
-$disk = "/home/freddy/VirtualBox VMs/stackinabox/box-disk2.vmdk"
-
 
 # Use NFS? (won't work on windows)
 $use_nfs = false
@@ -47,3 +23,6 @@ $release_branch = "stable/mitaka"
 
 # Second Disk (used for lxd backing store)
 $disk = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk2.vmdk'
+
+# Third Disk (used for local docker image storage)
+$disk_docker = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk3.vmdk'

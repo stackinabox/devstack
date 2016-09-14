@@ -40,13 +40,13 @@
 
 /usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-vol.log 2>&1 &
 
-/usr/local/bin/heat-engine --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-eng.log 2>&1 &
+# /usr/local/bin/heat-engine --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-eng.log 2>&1 &
 
-/usr/local/bin/heat-api --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api.log 2>&1 &
+# /usr/local/bin/heat-api --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api.log 2>&1 &
 
-/usr/local/bin/heat-api-cfn --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cfn.log 2>&1 &
+# /usr/local/bin/heat-api-cfn --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cfn.log 2>&1 &
 
-/usr/local/bin/heat-api-cloudwatch --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cw.log 2>&1 &
+# /usr/local/bin/heat-api-cloudwatch --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cw.log 2>&1 &
 
 # /usr/local/bin/designate-central --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-central.log 2>&1 &
 
