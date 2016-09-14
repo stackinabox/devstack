@@ -6,6 +6,9 @@ ENV["LANG"] = "C.UTF-8"
 
 vagrant_dir = File.expand_path(File.dirname(__FILE__))
 personalization = File.expand_path(File.join(vagrant_dir, "Personalization"), __FILE__)
+if not File.exist?(personalization)
+  FileUtils.cp(File.expand_path(File.join(vagrant_dir, "Personalization.dist"), __FILE__), personalization)
+end
 load personalization
 
 

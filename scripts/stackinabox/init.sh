@@ -239,7 +239,7 @@ sudo mkdir -p /etc/systemd/system/docker.service.d
 sudo bash -c 'cat > /etc/systemd/system/docker.service.d/lxc.conf' <<'EOF'
 [Service]
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// --ip 192.168.27.100 -b lxdbr0
+ExecStart=/usr/bin/dockerd -H fd:// --ip 192.168.27.100 --iptables=false --ip-masq=true --ip-forward=true
 EOF
 
 # Docker enables IP forwarding by itself, but by default systemd overrides 
@@ -262,7 +262,7 @@ TasksMax=infinity
 EOF
 
 sudo bash -c 'cat >> /home/vagrant/.bash_profile' <<'EOF'
-export DOCKER_HOST=192.168.27.100
+export DOCKER_HOST=192.168.27.100:2375
 EOF
 
 sudo systemctl daemon-reload
