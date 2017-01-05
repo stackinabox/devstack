@@ -1,0 +1,297 @@
+heat_template_version: 2013-05-23
+description: Provision an UrbanCode hybrid-cloud deployment "solution" consisting of UrbanCode Deploy, and Blueprint Designer.
+
+parameters:
+
+  server_image:
+    type: string
+    default: ubuntu-1604-amd64-heat-cfntools 
+    description: image used to boot the server
+
+  server_flavor:
+    type: string
+    default: m1.large
+    description: flavor to use when booting the server
+
+  external_network_id:
+    type: string
+    description: uuid of a network to use for floating ip addresses
+
+  mysql_root_password:
+    type: string
+    description: root password for mysql instance
+    default: passw0rd
+
+  dns_nameserver:
+    type: string
+    description: address of a dns nameserver reachable in your environment
+    default: 8.8.8.8
+
+  ssh_key_name:
+    type: string
+    description: name of ssh key to be provisioned on the server
+
+resources:
+
+  ######################################################################
+  #
+  # network resources.  allocate a network and router for our server.
+  # it would also be possible to take advantage of existing network
+  # resources (and have the deployer provide network and subnet ids,
+  # etc, as parameters), but I wanted to minmize the amount of
+  # configuration necessary to make this go.
+  fixed_network:
+    type: "OS::Neutron::Net"
+
+  # This is the subnet on which we will deploy our docker server.
+  fixed_subnet:
+    type: "OS::Neutron::Subnet"
+    properties:
+      cidr: 10.0.100.0/24
+      network_id:
+        get_resource: fixed_network
+      dns_nameservers:
+        - get_param: dns_nameserver
+
+  # create a router attached to the external network provided as a
+  # parameter to this stack.
+  extrouter:
+    type: "OS::Neutron::Router"
+    properties:
+      external_gateway_info:
+        network:
+          get_param: external_network_id
+
+  # attached fixed_subnet to our extrouter router.
+  extrouter_inside:
+    type: "OS::Neutron::RouterInterface"
+    properties:
+      router_id:
+        get_resource: extrouter
+      subnet_id:
+        get_resource:
+          fixed_subnet
+
+  ######################################################################
+  #
+  # security groups.  we need to permit network traffic of various
+  # sorts.
+  #
+
+  # this permits ssh and icmp traffic
+  secgroup_common:
+    type: "OS::Neutron::SecurityGroup"
+    properties:
+      rules:
+        - protocol: icmp
+        - port_range_min: 22
+          port_range_max: 22
+          protocol: tcp
+
+  # this permits mysql traffic
+  secgroup_db:
+    type: "OS::Neutron::SecurityGroup"
+    properties:
+      rules:
+        - port_range_min: 3306
+          port_range_max: 3306
+          protocol: tcp
+
+  # this permits access to the docker tcp:// socket we're setting up on our server.
+  secgroup_docker:
+    type: "OS::Neutron::SecurityGroup"
+    properties:
+      rules:
+        - port_range_min: 2375
+          port_range_max: 2375
+          protocol: tcp
+
+  # this permits http/https traffic
+  secgroup_webserver:
+    type: "OS::Neutron::SecurityGroup"
+    properties:
+      rules:
+        - port_range_min: 80
+          port_range_max: 80
+          protocol: tcp
+        - port_range_min: 443
+          port_range_max: 443
+          protocol: tcp
+        - port_range_min: 8080
+          port_range_max: 8080
+          protocol: tcp
+
+  ######################################################################
+  #
+  # Create a wait condition.  We will use this to synchronize the 
+  # creation of the Docker containers with the target Docker server (to 
+  # ensure that we don't attempt to create containers before Docker is 
+  # available).
+  #
+  docker_wait_handle:
+    type: "AWS::CloudFormation::WaitConditionHandle"
+
+  docker_wait_condition:
+    type: "AWS::CloudFormation::WaitCondition"
+    depends_on:
+      - docker_server
+    properties:
+      Handle:
+        get_resource: docker_wait_handle
+      Timeout: "9000"
+
+  ######################################################################
+  #
+  # This is our Docker server. It is designed to boot a Fedora
+  # image, install and start docker, and then notify Heat that things
+  # are ready for booting some containers.
+  #
+  docker_server:
+    type: "OS::Nova::Server"
+    depends_on:
+      - docker_server_floating
+      - docker_server_eth0
+    properties:
+      image:
+        get_param: server_image
+      flavor:
+        get_param: server_flavor
+      key_name:
+        get_param: ssh_key_name
+      user_data_format: RAW
+      user_data:
+        # We're using Heat's 'str_replace' function in order to
+        # substitute into this script the Heat-generated URL for
+        # signaling the docker_wait_condition resource.
+        str_replace:
+          template: |
+            #!/usr/bin/env bash
+
+            # this is installed on the image we are using (if using an image with heat-cfntools with heat-docker-compose hooks installed)
+            # apt-get install -qqy docker.io
+
+            # must configure dockerd to use xfs filesystem 
+            systemctl stop docker
+            
+            mkdir -p /etc/systemd/system/docker.service.d
+            # touch /etc/systemd/system/docker.service.d/local-settings.conf
+            # cat >> /etc/systemd/system/docker.service.d/local-settings.conf<<EOF
+            # [Service]
+            # ExecStart=
+            # ExecStart=/usr/bin/docker daemon -H fd:// -H tcp://0.0.0.0:2375 --bip 192.168.27.100
+            # EOF
+
+            # rm -rf /var/lib/docker/*
+            systemctl daemon-reload
+            systemctl start docker
+
+            systemctl status docker
+
+            # Signal heat that we are finished settings things up.
+            cfn-signal -e0 --data 'OK' -r 'Setup complete' '$WAIT_HANDLE'
+          params:
+            "$WAIT_HANDLE":
+              get_resource: docker_wait_handle
+      networks:
+        - port:
+            get_resource: docker_server_eth0
+
+  # attach a port to the server with a fixed address from
+  # fixed_subnet and associate it with appropriate security groups.
+  docker_server_eth0:
+    type: "OS::Neutron::Port"
+    properties:
+      network_id:
+        get_resource: fixed_network
+      security_groups:
+        - get_resource:
+            secgroup_common
+        - get_resource:
+            secgroup_db
+        - get_resource:
+            secgroup_webserver
+        - get_resource:
+            secgroup_docker
+      fixed_ips:
+        - subnet_id:
+            get_resource:
+              fixed_subnet
+
+  # associate a floating ip address with the port created in the
+  # previous resource.
+  docker_server_floating:
+    type: "OS::Neutron::FloatingIP"
+    # workaround for stack delete problems as suggested in:
+    # https://bugs.launchpad.net/heat/+bug/1299259/comments/4
+    depends_on:
+      - extrouter_inside
+    properties:
+      floating_network_id:
+        get_param:
+          external_network_id
+      port_id:
+        get_resource: docker_server_eth0
+
+  ######################################################################
+  # 
+  # database container.  this runs the official mysql container.  we
+  # map port 3306 in the container to port 3306 on the host.
+  #
+  # The 'depends_on' clause in this resource definition means that
+  # Heat will not attempt to instantiate this resource until we signal
+  # the docker_wait_condition.
+  #
+  docker_dbserver:
+    type: "DockerInc::Docker::Container"
+    depends_on:
+      - docker_wait_condition
+    properties:
+      # set the docker enpoint to a url pointing at the ip address of
+      # the docker_server we started, above.  We use Heat's
+      # 'str_replace' function in order to substitute the address into
+      # the URL.
+      docker_endpoint:
+        str_replace:
+          template: "tcp://$HOST:2375"
+          params:
+            "$HOST":
+              get_attr:
+                - docker_server_floating
+                - floating_ip_address
+      image: mysql
+      env: 
+        # The official MySQL docker image expect the database root
+        # password to be provided in the MYSQL_ROOT_PASSWORD
+        # environment variable.
+        - str_replace:
+            template: MYSQL_ROOT_PASSWORD=$PASSWORD
+            params:
+              "$PASSWORD":
+                get_param:
+                  mysql_root_password
+      port_specs:
+        - 3306
+      port_bindings:
+        3306: 3306
+
+  ######################################################################
+  #
+  # a simple webserver. we map port 80 in the container to port 80 on
+  # the host.
+  #
+  docker_webserver:
+    type: "DockerInc::Docker::Container"
+    depends_on:
+      - docker_wait_condition
+    properties:
+      docker_endpoint:
+        str_replace:
+          template: "tcp://$HOST:2375"
+          params:
+            "$HOST": { get_attr: [ docker_server_floating, floating_ip_address ] }
+      image: larsks/simpleweb
+      port_specs:
+        - 80
+      port_bindings:
+        80: 80
+

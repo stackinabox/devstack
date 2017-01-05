@@ -22,8 +22,6 @@
 
 /usr/local/bin/nova-scheduler --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-sch.log 2>&1 &
 
-/usr/local/bin/nova-spicehtml5proxy --config-file /etc/nova/nova.conf --web /usr/share/spice-html5 >> /opt/stack/logs/n-spice.log 2>&1 &
-
 /usr/local/bin/nova-consoleauth --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-cauth.log 2>&1 &
 
 /usr/local/bin/nova-serialproxy --config-file /etc/nova/nova.conf >> /opt/stack/logs/n-sproxy.log 2>&1 &
@@ -39,24 +37,3 @@
 /usr/local/bin/cinder-backup --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-bak.log 2>&1 &
 
 /usr/local/bin/cinder-volume --config-file /etc/cinder/cinder.conf >> /opt/stack/logs/c-vol.log 2>&1 &
-
-# /usr/local/bin/heat-engine --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-eng.log 2>&1 &
-
-# /usr/local/bin/heat-api --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api.log 2>&1 &
-
-# /usr/local/bin/heat-api-cfn --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cfn.log 2>&1 &
-
-# /usr/local/bin/heat-api-cloudwatch --config-file=/etc/heat/heat.conf >> /opt/stack/logs/h-api-cw.log 2>&1 &
-
-# /usr/local/bin/designate-central --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-central.log 2>&1 &
-
-# /usr/local/bin/designate-api --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-api.log 2>&1 &
-
-#/usr/local/bin/designate-manage pool-manager-cache sync >> /opt/stack/logs/designate-sync-pool-manager-cache.log 2>&1 &
-
-# /usr/local/bin/designate-pool-manager --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-pool-manager.log 2>&1 &
-
-# /usr/local/bin/designate-mdns --config-file=/etc/designate/designate.conf >> /opt/stack/logs/designate-mdns.log 2>&1 &
-
-# cd /opt/stack/kuryr-libnetwork
-# ./scripts/run_kuryr.sh >> /opt/stack/logs/kuryr-libnetwork.log 2>&1 &

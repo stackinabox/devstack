@@ -70,6 +70,10 @@ sudo rm -f /var/log/wtmp /var/log/btmp
 sudo bash -c "find /var/log -type f | grep '.log' | xargs truncate -s 0"
 find /opt/stack/logs -type f | grep '.log' | xargs truncate -s 0
 
+# remove image files from /opt/stack/devstack/files/ directory
+sudo rm -rf /opt/stack/devstack/cirros-0.3.4-x86_64-lxc.tar.gz
+sudo rm -rf /opt/stack/devstack/xenial-server-cloudimg-amd64-root.tar.gz
+
 # clear terminal history
 history -c
 

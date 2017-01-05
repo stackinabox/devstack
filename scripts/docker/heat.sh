@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# exit on error
+set -e
+
 # set release branch to retrieve from git
 RELEASE_BRANCH=${1:-master}
 
