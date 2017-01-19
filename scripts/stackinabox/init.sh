@@ -60,7 +60,7 @@ sudo touch /etc/init/zpool-import.conf
 sudo chown -R :lxd /var/lib/lxd
 
 echo "Install LXD and initialize with ZFS storage-pool 'lxd' for backend"
-sudo apt-get install -y lxd lxd-client
+sudo apt-get install -y lxd lxd-client aufs-tools
 sudo lxd init --auto --storage-backend zfs --storage-pool lxd
 sudo chown -R :lxd /var/lib/lxd
 
@@ -114,29 +114,6 @@ EOF
 
 sudo hostname openstack
 
-# # speed up DNS resolution
-# sudo bash -c 'cat > /etc/dhcp/dhclient.conf' <<EOF
-# timeout 30;
-# retry 10;
-# reboot 0;
-# select-timeout 0;
-# initial-interval 1;
-# backoff-cutoff 2;
-# interface "enp0s3"
-# {
-#   prepend domain-name-servers 8.8.8.8, 8.8.4.4;
-#   request subnet-mask,
-#           broadcast-address,
-#           time-offset,
-#           routers,
-#           domain-name,
-#           domain-name-servers,
-#           host-name,
-#           netbios-name-servers,
-#           netbios-scope;
-# }
-# EOF
-
 echo enable cgroup memory limits
 sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="cgroup_enable=memory swapaccount=1 /g' /etc/default/grub
 sudo sed -i 's/GRUB_CMDLINE_LINUX="/GRUB_CMDLINE_LINUX="cgroup_enable=memory swapaccount=1 /g' /etc/default/grub
@@ -147,10 +124,6 @@ echo "Cloning DevStack repo from branch \"${RELEASE_BRANCH}\""
 sudo mkdir -p /opt/stack
 sudo chown -R vagrant:vagrant /opt/stack
 git clone https://git.openstack.org/openstack-dev/devstack.git /opt/stack/devstack -b "${RELEASE_BRANCH}"
-#need to do below to stop devstack failing on test-requirements for lxd
-# echo "Cloning nova-lxd repo from branch \"${RELEASE_BRANCH}\""
-# git clone https://github.com/openstack/nova-lxd /opt/stack/nova-lxd -b "${RELEASE_BRANCH}"
-# rm -f /opt/stack/nova-lxd/test-requirements.txt
 
 # add local.conf to /opt/devstack folder
 cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
@@ -246,16 +219,40 @@ newgrp docker
 # have docker listen on a port instead of a unix socket for remote administration
 sudo bash -c 'cat > /etc/systemd/system/docker.socket' <<'EOF'
 [Socket]
-ListenStream=0.0.0.0:2375
+ListenStream=/var/run/docker.sock
+SocketMode=0660
+SocketUser=root
+SocketGroup=docker
 EOF
 
 sudo mkdir -p /etc/systemd/system/docker.service.d
 
 # have docker utilze lxc to launch containers
 sudo bash -c 'cat > /etc/systemd/system/docker.service.d/lxc.conf' <<'EOF'
+[Unit]
+Description=Docker Application Container Engine
+Documentation=https://docs.docker.com
+After=network.target docker.socket firewalld.service
+Requires=docker.socket
+
 [Service]
+Type=notify
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// --ip 192.168.27.100 --iptables=false --ip-masq=true --ip-forward=true
+ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2375 --iptables=false --ip-masq=true --ip-forward=true --max-concurrent-downloads=5 --max-concurrent-uploads=5 --mtu 1500
+ExecReload=/bin/kill -s HUP $MAINPID
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Delegate=yes
+KillMode=process
+Restart=on-failure
+StartLimitBurst=3
+StartLimitInterval=60s
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
 # Docker enables IP forwarding by itself, but by default systemd overrides 
@@ -277,36 +274,34 @@ sudo bash -c 'cat > /etc/systemd/system/docker.service.d/tasks.conf' <<'EOF'
 TasksMax=infinity
 EOF
 
-sudo bash -c 'cat >> /home/vagrant/.bash_profile' <<'EOF'
-export DOCKER_HOST=192.168.27.100:2375
-EOF
-
+echo "reload/restart docker service"
 sudo systemctl daemon-reload
-sudo systemctl restart systemd-networkd
+#sudo systemctl restart systemd-networkd
 sudo systemctl restart docker.service
 
 # install 'shellinabox' to make using this image on windows easier
-#shellinabox will be available at http://192.168.27.100:4200
+# shellinabox will be available at http://192.168.27.100:4200
+echo "install shellinabox"
 sudo apt-get install -y shellinabox
 sudo sed -i 's/--no-beep/--no-beep --disable-ssl/g' /etc/default/shellinabox
 sudo /etc/init.d/shellinabox restart
 
 # install java (for use with udclient)
-cd /tmp
-wget -Nnv http://artifacts.stackinabox.io/ibm/java-jre/latest.txt
-ARTIFACT_VERSION=$(cat latest.txt)
-ARTIFACT_DOWNLOAD_URL=http://artifacts.stackinabox.io/ibm/java-jre/$ARTIFACT_VERSION/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+# cd /tmp
+# wget -Nnv http://artifacts.stackinabox.io/ibm/java-jre/latest.txt
+# ARTIFACT_VERSION=$(cat latest.txt)
+# ARTIFACT_DOWNLOAD_URL=http://artifacts.stackinabox.io/ibm/java-jre/$ARTIFACT_VERSION/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
 
-sudo mkdir -p /opt/java
-sudo wget -Nnv $ARTIFACT_DOWNLOAD_URL
-sudo tar -zxf ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz -C /opt/java/
-sudo touch /etc/profile.d/java_home.sh
-sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
-export JAVA_HOME=/opt/java/ibm-java-x86_64-71/jre
-export PATH=$JAVA_HOME/bin:$PATH
-EOF
-sudo chmod 755 /etc/profile.d/java_home.sh
-sudo rm -f /tmp/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
+# sudo mkdir -p /opt/java
+# sudo wget -Nnv $ARTIFACT_DOWNLOAD_URL
+# sudo tar -zxf ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz -C /opt/java/
+# sudo touch /etc/profile.d/java_home.sh
+# sudo bash -c 'cat >> /etc/profile.d/java_home.sh' <<'EOF'
+# export JAVA_HOME=/opt/java/ibm-java-x86_64-71/jre
+# export PATH=$JAVA_HOME/bin:$PATH
+# EOF
+# sudo chmod 755 /etc/profile.d/java_home.sh
+# sudo rm -f /tmp/ibm-java-jre-$ARTIFACT_VERSION-linux-x86_64.tgz
 
 cp /vagrant/scripts/stackinabox/admin-openrc.sh /home/vagrant
 cp /vagrant/scripts/stackinabox/demo-openrc.sh /home/vagrant

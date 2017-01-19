@@ -89,6 +89,13 @@ echo "Adding LXD compatible images to OpenStack"
 cd /vagrant/lxc-cloud-images
 chmod 755 import-images.sh
 ./import-images.sh
+
+# setup bluebox theme
+cp /vagrant/scripts/bluebox-theme/logo.png /opt/stack/horizon/static/dashboard/img/logo.png
+cp /vagrant/scripts/bluebox-theme/logo-splash.png /opt/stack/horizon/static/dashboard/img/logo-splash.png
+# haven't been able to find this file yet
+#mv /vagrant/scripts/bluebox-theme/bluebox.ico /opt/stack/horizon/static/dashboard/img/favicon.ico
+
 cat << EOF
 This is your host IP address: 192.168.27.100
 Horizon is now available at http://192.168.27.100/dashboard
