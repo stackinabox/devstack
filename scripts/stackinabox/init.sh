@@ -238,7 +238,7 @@ Requires=docker.socket
 [Service]
 Type=notify
 ExecStart=
-ExecStart=/usr/bin/dockerd -H fd:// -H tcp://0.0.0.0:2375 --iptables=false --ip-masq=true --ip-forward=true --max-concurrent-downloads=5 --max-concurrent-uploads=5 --mtu 1500
+ExecStart=/usr/bin/dockerd -H fd:// --iptables=false --ip-masq=true --ip-forward=true --max-concurrent-downloads=5 --max-concurrent-uploads=5 --mtu 1500 --insecure-registry 192.168.27.100:5555
 ExecReload=/bin/kill -s HUP $MAINPID
 LimitNOFILE=1048576
 LimitNPROC=infinity
@@ -278,6 +278,11 @@ echo "reload/restart docker service"
 sudo systemctl daemon-reload
 #sudo systemctl restart systemd-networkd
 sudo systemctl restart docker.service
+
+# set mysqld apparmor profile to disabled
+# this profile effects lxc containers run on this host when using docker
+sudo ln -s /etc/apparmor.d/usr.sbin.mysqld /etc/apparmor.d/disable/
+sudo apparmor_parser -R /etc/apparmor.d/usr.sbin.mysqld
 
 # install 'shellinabox' to make using this image on windows easier
 # shellinabox will be available at http://192.168.27.100:4200

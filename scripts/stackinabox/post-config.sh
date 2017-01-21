@@ -96,11 +96,38 @@ cp /vagrant/scripts/bluebox-theme/logo-splash.png /opt/stack/horizon/static/dash
 # haven't been able to find this file yet
 #mv /vagrant/scripts/bluebox-theme/bluebox.ico /opt/stack/horizon/static/dashboard/img/favicon.ico
 
-cat << EOF
+# setup demo user on this system
+sudo useradd -m -p $(perl -e 'printf("%s\n", crypt("labstack", "password"))') -s /bin/bash demo
+sudo usermod -aG docker demo
+sudo usermod -aG sudo demo
+sudo cp /home/vagrant/demo_key.priv /home/demo/demo_key.priv
+sudo chown demo:demo /home/demo/demo_key.priv
+
+sudo cp /home/vagrant/admin-openrc.sh /home/demo/admin-openrc.sh
+sudo chown demo:demo /home/demo/admin-openrc.sh
+
+sudo cp /home/vagrant/demo-openrc.sh /home/demo/demo-openrc.sh
+sudo chown demo:demo /home/demo/demo-openrc.sh
+
+# turn off ssh KnowHostsFile and StrictHostChecking 
+# for this machine (demo purposes only, don't ever do in production)
+sudo bash -c 'cat >> /etc/ssh/ssh_config' <<'EOF'
+Host *
+   StrictHostKeyChecking no
+   UserKnownHostsFile=/dev/null
+EOF
+
+cat << 'EOF'
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 This is your host IP address: 192.168.27.100
 Horizon is now available at http://192.168.27.100/dashboard
 Keystone is serving at http://192.168.27.100/identity
 The default users are: admin and demo
 The password: labstack
 Key pair is at /home/vagrant/demo_key.priv
+
+++++++ Login to this VM using:
+ssh demo@192.168.27.100
+password: labstack
+
 EOF
