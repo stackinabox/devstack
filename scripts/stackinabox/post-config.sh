@@ -117,17 +117,135 @@ Host *
    UserKnownHostsFile=/dev/null
 EOF
 
+# change "Listen 80' to 'Listen 8888' in /etc/apache2/ports.conf
+sudo sed -i 's/Listen 80/Listen 8888/g' /etc/apache2/ports.conf
+
+# change 'VirtualHost *:80' to 'VirtualHost *:8888' in /etc/apache2/sites-enabled/horizon.conf
+sudo sed -i 's/:80/:8888/g' /etc/apache2/sites-enabled/horizon.conf
+
+sudo systemctl reload apache2
+
+# install nginx
+sudo apt-get install -qqy nginx
+
+# disable the default vhost site
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# update /etc/nginx/nginx.conf
+# change 'sendfile on;' to 'sendfile off;'
+sudo sed -i 's/sendfile on;/sendfile off;/g' /etc/nginx/nginx.conf
+
+# add 'underscores_in_headers on;' 
+sudo sed -i 's/# server_tokens off;/underscores_in_headers on;/g' /etc/nginx/nginx.conf
+
+# setup openstack.stackinabox.io forwarding
+sudo bash -c 'cat > /etc/nginx/sites-available/openstack.conf' <<'EOF'
+server {
+        server_name openstack.stackinabox.io 192.168.27.100;
+
+        gzip_types text/plain text/css application/json application/x-javascript
+                   text/xml application/xml application/xml+rss text/javascript;
+
+        location / {
+
+                proxy_redirect off;
+                proxy_pass http://192.168.27.100:8888/;
+                proxy_set_header Host $host:$server_port;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/openstack.conf /etc/nginx/sites-enabled/openstack.conf
+
+# setup ucd.stackinabox.io forwarding
+sudo bash -c 'cat > /etc/nginx/sites-available/ucd.conf' <<'EOF'
+server {
+        server_name ucd.stackinabox.io;
+
+        gzip_types text/plain text/css application/json application/x-javascript
+                   text/xml application/xml application/xml+rss text/javascript;
+
+        location / {
+
+                proxy_redirect off;
+                proxy_pass http://ucd.stackinabox.io:8080/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/ucd.conf /etc/nginx/sites-enabled/ucd.conf
+
+# setup shell.stackinabox.io forwarding
+sudo bash -c 'cat > /etc/nginx/sites-available/shell.conf' <<'EOF'
+server {
+        server_name shell.stackinabox.io;
+
+        gzip_types text/plain text/css application/json application/x-javascript
+                   text/xml application/xml application/xml+rss text/javascript;
+
+        location / {
+
+                proxy_redirect off;
+                proxy_pass http://shell.stackinabox.io:4200/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/shell.conf /etc/nginx/sites-enabled/shell.conf
+
+# setup designer.stackinabox.io forwarding
+sudo bash -c 'cat > /etc/nginx/sites-available/designer.conf' <<'EOF'
+server {
+        server_name designer.stackinabox.io;
+
+        gzip_types text/plain text/css application/json application/x-javascript
+                   text/xml application/xml application/xml+rss text/javascript;
+
+        location / {
+                return 302 /landscaper/;
+        }
+
+        location /landscaper/ {
+
+                proxy_redirect off;
+                proxy_pass http://designer.stackinabox.io:9080/landscaper/;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+        }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/designer.conf /etc/nginx/sites-enabled/designer.conf
+
+# reload nginx
+sudo systemctl reload nginx
+
 cat << 'EOF'
+
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-This is your host IP address: 192.168.27.100
-Horizon is now available at http://192.168.27.100/dashboard
-Keystone is serving at http://192.168.27.100/identity
+
+Horizon is now available at http://openstack.stackinabox.io
+Keystone is serving at http://192.168.27.100:8888/identity/v3
 The default users are: admin and demo
 The password: labstack
 Key pair is at /home/vagrant/demo_key.priv
 
-++++++ Login to this VM using:
+++++++ Access the console from your shell:
 ssh demo@192.168.27.100
+password: labstack
+
+++++++ Access the console from your web browser at:
+http://shell.stackinabox.io
+username: demo
 password: labstack
 
 EOF

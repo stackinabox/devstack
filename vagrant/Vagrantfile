@@ -7,6 +7,8 @@ ENV["LANG"] = "C.UTF-8"
 # Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
 VAGRANTFILE_API_VERSION = "2"
 
+Vagrant.require_version ">= 1.9.1"
+
 vagrant_dir = File.expand_path(File.dirname(__FILE__))
 personalization = File.expand_path(File.join(vagrant_dir, "Personalization"), __FILE__)
 if not File.exist?(personalization)
