@@ -86,6 +86,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # add disk for docker image storage and execution
       vb.customize ['storageattach', :id, '--storagectl', 'SATA Controller', '--port', 2, '--device', 0, '--type', 'hdd', '--medium', $disk_docker]
     end
+    stackinabox.vm.provider "vmware_workstation" do |vw|
+      vw.name = "stackinabox" # sets the name that virtual box will show in it's UI
+      vw.vmx["numvcpus"] = "#{$cpus}" # set number of vcpus
+      vw.vmx["memsize"] = "#{$memory}" # set amount of memory allocated vm memory
+      vw.vmx["guestos"] = "ubuntu-64"
+      vw.vmx["scsi0:1.filename"] = "$lxd_disk"
+      vw.vmx["scsi0:1.present"] = "TRUE"
+      vw.vmx["scsi0:2.filename"] = "$docker_lxd"
+      vw.vmx["scsi0:2.present"] = "TRUE"
+      vw.vmx["sound.startconnected"] = "FALSE"
+      vw.vmx["tools.synctime"] = "TRUE"
+      vw.vmx["tools.upgrade.policy"] = "upgradeAtPowerCycle"
+    end
 
     # run stackinabox initialization scripts
     stackinabox.vm.provision "openstack", type: "shell", privileged: false, keep_color: false, path: File.expand_path(File.join(vagrant_dir, "..", "scripts", "stackinabox", "init.sh"), __FILE__), args: "#{$release_branch} #{$mtu}"
