@@ -26,3 +26,16 @@ $disk = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk2.vmdk'
 
 # Third Disk (used for local docker image storage)
 $disk_docker = '$HOME/VirtualBox VMs/stackinabox/ubuntu-16.04-amd64-disk3.vmdk'
+
+#####VMWare provider specific config
+#Both the following empty uninitialised disks must already exist at the specified locations
+# Use
+#vmware-vdiskmanager -c -a lsilogic -s 500GB -t 0 lxd.vmdk
+# and
+#vmware-vdiskmanager -c -a lsilogic -s 500GB -t 0 docker.vmdk
+# to create them at the specified location
+
+# Second Disk (used for lxd backing store)
+$lxd_disk='/home/freddy/vagrant/devstack/vagrant/lxd.vmdk'
+# Third Disk (used for local docker image storage)
+$docker_disk='/home/freddy/vagrant/devstack/vagrant/docker.vmdk'
