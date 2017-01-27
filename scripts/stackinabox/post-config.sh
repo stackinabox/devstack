@@ -6,11 +6,11 @@ set -e
 # set release branch to retrieve from git
 MTU=${2:-1500}
 
-sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o ens32 -j MASQUERADE
 
-# sudo ip link set dev enp0s3 mtu $MTU
-# sudo ip link set dev enp0s8 mtu $MTU
-# sudo ip link set dev enp0s9 mtu 1450
+# sudo ip link set dev ens32 mtu $MTU
+# sudo ip link set dev ens33 mtu $MTU
+# sudo ip link set dev ens34 mtu 1450
 
 source /home/vagrant/demo-openrc.sh labstack
 # echo "recreating router"
