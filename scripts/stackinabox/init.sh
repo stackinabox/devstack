@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 # exit on error
 #set -e
@@ -30,6 +30,8 @@ APT::AutoRemove::RecommendsImportant "false";
 EOF
 
 echo Updating...
+sudo dpkg --configure -a
+sleep 10
 sudo apt-get -qqy update
 sudo apt-get install -qqy linux-headers-$(uname -r) \
   linux-headers-generic \
@@ -98,11 +100,11 @@ sudo echo "net.ipv4.conf.default.rp_filter=0" | sudo tee --append /etc/sysctl.co
 sudo echo "net.ipv6.conf.all.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
 sudo echo "net.ipv6.conf.default.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
 sudo echo "net.ipv6.conf.lo.disable_ipv6 = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
-#sudo echo "net.ipv4.conf.enp0s3.proxy_arp = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
+#sudo echo "net.ipv4.conf.ens32.proxy_arp = 1" | sudo tee --append /etc/sysctl.conf > /dev/null
 sudo sysctl -p
 
 # allow OpenStack nodes to route packets out through NATed network on HOST (this is the vagrant managed nic)
-sudo iptables -t nat -A POSTROUTING -o enp0s3 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o ens32 -j MASQUERADE
 
 # Update host configuration
 sudo bash -c "echo 'openstack' > /etc/hostname"
@@ -133,10 +135,10 @@ cp /vagrant/scripts/stackinabox/local.conf /opt/stack/devstack/
 sed -i "s@RELEASE_BRANCH=@RELEASE_BRANCH=$RELEASE_BRANCH@" /opt/stack/devstack/local.conf
 
 # don't assign IP to eth2 yet
-sudo ifconfig enp0s9 0.0.0.0
-sudo ifconfig enp0s9 promisc
-sudo ip link set dev enp0s9 up
-# sudo ip link set dev enp0s9 mtu 1450
+sudo ifconfig ens34 0.0.0.0
+sudo ifconfig ens34 promisc
+sudo ip link set dev ens34 up
+# sudo ip link set dev ens34 mtu 1450
 
 # Fix permissions on current tty so screens can attach
 sudo chmod go+rw tty
@@ -154,13 +156,13 @@ else
 fi
 
 # bridge eth2 to ovs for our public network
-# sudo ovs-vsctl add-port br-ex enp0s9
+# sudo ovs-vsctl add-port br-ex ens34
 sudo ifconfig br-ex promisc up
 
 # assign ip from public network to bridge (br-ex)
 sudo bash -c 'cat >> /etc/network/interfaces' <<'EOF'
-auto enp0s9
-iface enp0s9 inet manual
+auto ens34
+iface ens34 inet manual
     address 0.0.0.0
     mtu 1450
     up ifconfig $IFACE 0.0.0.0 up
@@ -176,8 +178,8 @@ iface enp0s9 inet manual
         down ip link set $IFACE promisc off
 EOF
 
-# sudo ip link set dev enp0s3 mtu $MTU
-# sudo ip link set dev enp0s8 mtu $MTU
+# sudo ip link set dev ens32 mtu $MTU
+# sudo ip link set dev ens33 mtu $MTU
 
 cp /vagrant/scripts/stackinabox/stack-noscreenrc /opt/stack/devstack/stack-noscreenrc
 chmod 755 /opt/stack/devstack/stack-noscreenrc
@@ -255,8 +257,8 @@ StartLimitInterval=60s
 WantedBy=multi-user.target
 EOF
 
-# Docker enables IP forwarding by itself, but by default systemd overrides 
-# the respective sysctl setting. The following disables this override (for all interfaces): 
+# Docker enables IP forwarding by itself, but by default systemd overrides
+# the respective sysctl setting. The following disables this override (for all interfaces):
 sudo bash -c 'cat > /etc/systemd/network/ipforward.network' <<'EOF'
 [Network]
 IPForward=ipv4
