@@ -1,7 +1,7 @@
 stackinabox [![Build Status](https://travis-ci.org/tpouyer/stackinabox.svg?branch=master)](https://travis-ci.org/tpouyer/stackinabox)
 ============
 
-#### OpenStack Liberty (DevStack) w/ Neutron networking in Vagrant using Ubuntu's [LXD](https://github.com/lxc/nova-lxd)
+#### OpenStack Newton (DevStack) w/ Neutron networking in Vagrant using Ubuntu's [LXD](https://github.com/lxc/nova-lxd)
 
 ## Quick Start:
   - Download & install [GIT](https://git-scm.com/) for your platform
